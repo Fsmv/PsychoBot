@@ -1,6 +1,7 @@
 # Project specific
 build/
 debug/
+include/json.hpp
 
 # Compiled Object files
 *.slo

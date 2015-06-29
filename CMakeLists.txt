@@ -9,6 +9,9 @@ set(SOURCES
 set(TESTSRC
 )
 
+file(DOWNLOAD https://github.com/nlohmann/json/raw/48c4f4d05d8ad019846b3e51e6e5d6732296e228/src/json.hpp ${CMAKE_SOURCE_DIR}/include/json.hpp
+     EXPECTED_MD5 ddd0352e8c49fe7661d38523ecbd294a)
+
 set(CMAKE_CXX_FLAGS "-std=c++11")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
