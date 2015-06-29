@@ -19,6 +19,8 @@
 #define _WEBHOOKS_H_
 
 #include <cstdint>
+#include "json.hpp"
+using json = nlohmann::json;
 
 /**
  * Start the webhooks server and bind to the specified port and ip address
@@ -34,6 +36,21 @@ int startServer(uint16_t port, const char *ip);
  */
 void stopServer();
 
+/**
+ * Gets the top event from the queue without removing it
+ * @return the json update data
+ */
+json peekUpdate();
 
+/**
+ * Gets the top event from the queue and removes it
+ * @return the json update data
+ */
+json popUpdate();
+
+/**
+ * @return the number of updates in the queue 
+ */
+size_t getNumUpdates();
 
 #endif

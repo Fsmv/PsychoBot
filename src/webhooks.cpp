@@ -25,8 +25,32 @@
 #include <sys/socket.h>
 #include <microhttpd.h>
 #include <iostream>
+#include <queue>
+#include <mutex>
 
+static std::mutex updatesMutex;
+static std::queue<json> updates;
 static struct MHD_Daemon *server;
+
+json peekUpdate() {
+    updatesMutex.lock();
+    return updates.front();
+    updatesMutex.unlock();
+}
+
+json popUpdate() {
+    updatesMutex.lock();
+    auto front = updates.front();
+    updates.pop();
+    return front;
+    updatesMutex.unlock();
+}
+
+size_t getNumUpdates() {
+    updatesMutex.lock();
+    return updates.size();
+    updatesMutex.unlock();
+}
 
 // 1 MB
 #define MAX_MESSAGE_LEN (8*1024*1024)
@@ -65,7 +89,10 @@ request_completed (void *cls, struct MHD_Connection *connection,
     
     if (!con_info) return;
     if (con_info->message) {
-        puts(con_info->message);
+        updatesMutex.lock();
+        updates.push(json::parse(con_info->message));
+        updatesMutex.unlock();
+        
         delete[] con_info->message;
     }
     
