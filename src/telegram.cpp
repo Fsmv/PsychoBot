@@ -24,6 +24,9 @@
 #include "json.hpp"
 using json = nlohmann::json;
 
+#include "logger.h"
+static Logger logger("tg api");
+
 const json &getConfigOption(const std::string &option);
 
 static std::string callMethod(std::string method, std::map<std::string, std::string> arguments) {
@@ -33,9 +36,10 @@ static std::string callMethod(std::string method, std::map<std::string, std::str
     try {
         curlpp::Cleanup cleanup;
         curlpp::Easy request;
+
         request.setOpt<Url>(getConfigOption("api_url").get<std::string>()
                             + getConfigOption("token").get<std::string>()
-                            + method);
+                            + "/" + method);
         
         if (arguments.size() != 0) {
             curlpp::Forms formParts;
@@ -51,15 +55,23 @@ static std::string callMethod(std::string method, std::map<std::string, std::str
     }
     
     catch(curlpp::RuntimeError &e) {
-        std::cerr << "Failed to call method: " << e.what() << std::endl;
+        logger.error("Failed to call method: " + std::string(e.what()));
     }
     catch(curlpp::LogicError &e) {
-        std::cerr << "Failed to call method: " << e.what() << std::endl;
+        logger.error("Failed to call method: " + std::string(e.what()));
     }
     
     return result.str();
 }
 
 bool setWebhook(std::string url) {
-    callMethod("setWebhook", {{"url", url}});
+    json data = json::parse(callMethod("setWebhook", {{"url", url}}));
+    bool result = data["ok"].get<bool>();
+    if (result) {
+        logger.debug(data["description"].get<std::string>());
+    } else {
+        logger.error(data["description"].get<std::string>());
+    }
+    
+    return result;
 }

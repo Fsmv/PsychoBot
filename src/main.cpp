@@ -31,7 +31,9 @@ using json = nlohmann::json;
 
 #include "webhooks.h"
 #include "telegram.h"
+#include "logger.h"
 
+static Logger logger("main");
 static const std::string CONFIG_FILE = "config.json";
 static json config;
 
@@ -43,12 +45,23 @@ static bool loadConfig() {
     
     std::istream_iterator<char> it(f), eof;
     std::string config_json(it, eof);
-    config = json::parse(config_json);
+    
+    try {
+        config = json::parse(config_json);
+    } catch (std::invalid_argument &e) {
+        return false;
+    }
     
     if (config.find("token") == config.end() ||
         config.find("api_url") == config.end() ||
         config.find("webhook_url") == config.end()) {
         return false;        
+    }
+    
+    if (config.find("log_level") != config.end()) {
+        Logger::setGlobalLogLevel(
+            Logger::parseLogLevel(
+                config["log_level"].get<std::string>().c_str()));
     }
     
     return true;
@@ -69,7 +82,7 @@ void luaHello() {
 
 int main(int argc, char **argv) {
     if(!loadConfig()) {
-        std::cerr << "Could not load config" << std::endl;
+        logger.error("Failed to load config");
         return 1;
     }
     
@@ -77,7 +90,7 @@ int main(int argc, char **argv) {
     setWebhook(config["webhook_url"].get<std::string>());
     
     startServer(atoi(getenv("PORT")), getenv("IP"));
-    std::cout << "Press Enter to stop" << std::endl;
+    std::cout << "Press Enter to stop"<< std::flush;
     std::cin.ignore();
     stopServer();
     

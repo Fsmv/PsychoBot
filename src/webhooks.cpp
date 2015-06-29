@@ -19,15 +19,20 @@
 #include <cstdlib>
 #include <cstring>
 #include <cstdio>
+
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/select.h>
 #include <sys/socket.h>
-#include <microhttpd.h>
+
 #include <iostream>
 #include <queue>
 #include <mutex>
 
+#include <microhttpd.h>
+#include "logger.h"
+
+static Logger logger("Webhooks");
 static std::mutex updatesMutex;
 static std::queue<json> updates;
 static struct MHD_Daemon *server;
@@ -103,9 +108,10 @@ request_completed (void *cls, struct MHD_Connection *connection,
         try {
             auto update = json::parse(con_info->message);
             updates.push(update);
+            logger.debug("Update: " + update.dump());
         } catch (std::invalid_argument &e) {
-            std::cerr << "Invalid data received from " << getIP(connection)
-                      << "\nMessage:\n" << con_info->message << std::endl;
+            logger.error("Invalid data received from " + getIP(connection)
+                       + "\nMessage:\n" + std::string(con_info->message));
         }
         updatesMutex.unlock();
         
@@ -135,6 +141,7 @@ answer_to_connection (void *cls, struct MHD_Connection *connection,
     if (!*con_cls) { // new request
         if (strcmp(method, "POST") == 0) {
             if(!checkIP(connection)) {
+                logger.debug("Rejected packet from " + getIP(connection));
                 return MHD_NO;
             }
             
@@ -148,6 +155,7 @@ answer_to_connection (void *cls, struct MHD_Connection *connection,
             return MHD_YES;
         }
         
+        logger.debug("Rejected non-POST message");
         return MHD_NO;
     }
     
@@ -193,14 +201,17 @@ int startServer(uint16_t port, const char *ip)  {
                               MHD_OPTION_END);
                               
     if (!server) {
+        logger.error("Failed to start webhooks server on " + std::string(ip) + ":" + std::to_string(port));
         return 1;
     }
     
+    logger.info("Started webhooks server on " + std::string(ip) + ":" + std::to_string(port));
     return 0;
 }
 
 void stopServer() {
     if(server) {
         MHD_stop_daemon(server);
+        logger.info("Stopped webhooks server");
     }
 }
