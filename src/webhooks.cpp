@@ -123,7 +123,7 @@ answer_to_connection (void *cls, struct MHD_Connection *connection,
     return MHD_NO;
 }
 
-int startServer(int port, const char *ip)  {
+int startServer(uint16_t port, const char *ip)  {
     struct sockaddr_in ipaddr;
     ipaddr.sin_family = AF_INET;
     ipaddr.sin_port = htons(port);

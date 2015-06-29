@@ -18,7 +18,22 @@
 #ifndef _WEBHOOKS_H_
 #define _WEBHOOKS_H_
 
-int startServer(int port, const char *ip);
+#include <cstdint>
+
+/**
+ * Start the webhooks server and bind to the specified port and ip address
+ * 
+ * @param port port to bind to
+ * @param ip IPv4 address string
+ * @return 0 on success 1 on error
+ */
+int startServer(uint16_t port, const char *ip);
+
+/**
+ * Stop the webhooks server 
+ */
 void stopServer();
+
+
 
 #endif
