@@ -4,6 +4,7 @@ Project(PsychoBot)
 set(SOURCES
     src/main.cpp
     src/webhooks.cpp
+    src/telegram.cpp
 )
 
 set(TESTSRC

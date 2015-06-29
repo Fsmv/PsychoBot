@@ -21,10 +21,6 @@ extern "C" {
     #include "lauxlib.h"
 }
 
-#include <curlpp/cURLpp.hpp>
-#include <curlpp/Easy.hpp>
-#include <curlpp/Options.hpp>
-
 #include "json.hpp"
 using json = nlohmann::json;
 
@@ -34,11 +30,12 @@ using json = nlohmann::json;
 #include <iterator>
 
 #include "webhooks.h"
+#include "telegram.h"
 
 static const std::string CONFIG_FILE = "config.json";
 static json config;
 
-bool loadConfig() {
+static bool loadConfig() {
     std::ifstream f(CONFIG_FILE);
     if(!f.good()) {
         return false;
@@ -57,6 +54,10 @@ bool loadConfig() {
     return true;
 }
 
+const json &getConfigOption(const std::string &option) {
+    return config[option];
+}
+
 void luaHello() {
     lua_State *L = luaL_newstate();
     
@@ -66,28 +67,6 @@ void luaHello() {
     lua_close(L);
 }
 
-void telegramHello() {
-    using namespace curlpp::options;
-    
-    try {
-        curlpp::Cleanup myCleanup;
-        curlpp::Easy myRequest;
-        myRequest.setOpt<Url>(config["api_url"].get<std::string>() + config["token"].get<std::string>() + "/setWebhook");
-        curlpp::Forms formParts;
-        formParts.push_back(new curlpp::FormParts::Content("url", config["webhook_url"].get<std::string>()));
-        myRequest.setOpt<HttpPost>(formParts);
-        myRequest.perform();
-    }
-    
-    catch(curlpp::RuntimeError &e) {
-        std::cout << e.what() << std::endl;
-    }
-    
-    catch(curlpp::LogicError &e) {
-        std::cout  << e.what() << std::endl;
-    }
-}
-
 int main(int argc, char **argv) {
     if(!loadConfig()) {
         std::cerr << "Could not load config" << std::endl;
@@ -95,10 +74,10 @@ int main(int argc, char **argv) {
     }
     
     //luaHello();
-    telegramHello();
+    setWebhook(config["webhook_url"].get<std::string>());
     
     startServer(atoi(getenv("PORT")), getenv("IP"));
-    std::cout << "\nPress Enter to stop" << std::endl;
+    std::cout << "Press Enter to stop" << std::endl;
     std::cin.ignore();
     stopServer();
     
