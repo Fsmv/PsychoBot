@@ -52,6 +52,7 @@ size_t getNumUpdates() {
     updatesMutex.unlock();
 }
 
+#define VERIFY_IP
 // 1 MB
 #define MAX_MESSAGE_LEN (8*1024*1024)
 #define POST_BUFFER_SIZE 65536
@@ -81,6 +82,15 @@ static int send_page (struct MHD_Connection *connection, const char *page) {
     return ret;
 }
 
+std::string getIP(struct MHD_Connection *connection) {
+    char address[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, (void *)
+        &((struct sockaddr_in *)MHD_get_connection_info(connection,
+            MHD_CONNECTION_INFO_CLIENT_ADDRESS)->client_addr)->sin_addr,
+        address, INET_ADDRSTRLEN);
+    return std::string(address);
+}
+
 static void
 request_completed (void *cls, struct MHD_Connection *connection,
                    void **con_cls, enum MHD_RequestTerminationCode toe) {
@@ -90,7 +100,13 @@ request_completed (void *cls, struct MHD_Connection *connection,
     if (!con_info) return;
     if (con_info->message) {
         updatesMutex.lock();
-        updates.push(json::parse(con_info->message));
+        try {
+            auto update = json::parse(con_info->message);
+            updates.push(update);
+        } catch (std::invalid_argument &e) {
+            std::cerr << "Invalid data received from " << getIP(connection)
+                      << "\nMessage:\n" << con_info->message << std::endl;
+        }
         updatesMutex.unlock();
         
         delete[] con_info->message;
@@ -100,6 +116,15 @@ request_completed (void *cls, struct MHD_Connection *connection,
     *con_cls = nullptr;
 }
 
+// Warning: not real security
+bool checkIP(struct MHD_Connection *connection) {
+#ifdef VERIFY_IP
+    std::string ip = getIP(connection);
+    return ip.find("10.240.") == 0;
+#else
+    return true;
+#endif
+}
 
 static int
 answer_to_connection (void *cls, struct MHD_Connection *connection,
@@ -109,6 +134,10 @@ answer_to_connection (void *cls, struct MHD_Connection *connection,
                           
     if (!*con_cls) { // new request
         if (strcmp(method, "POST") == 0) {
+            if(!checkIP(connection)) {
+                return MHD_NO;
+            }
+            
             // create the persistent connection info object
             struct connection_info *con_info = new struct connection_info;
             con_info->message = nullptr;
