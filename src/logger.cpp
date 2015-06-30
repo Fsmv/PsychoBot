@@ -28,7 +28,8 @@
 
 #include "logger.h"
 
-const char *Logger::printFormat = "%s %s [%s] - %s\n";
+const char *Logger::consolePrintFormat = "\r%s %s [%s]\t- %s\n";
+const char *Logger::filePrintFormat = "%s %s [%s]\t- %s\n";
 const char *Logger::timeFormat = "%Y-%m-%d %H:%M:%S";
 static const int MAX_TIME_STR_LEN = 21;
 
@@ -57,12 +58,12 @@ void Logger::log(LogLevel level, const char *message) {
                  Logger::timeFormat, localtime(&currentTime));
 
         //print to console
-        printf(Logger::printFormat, timeStr, Logger::getLevelName(level), name,
+        printf(Logger::consolePrintFormat, timeStr, Logger::getLevelName(level), name,
                message);
 
         if (Logger::logFile.get()) {
             //print to the file
-            fprintf(Logger::logFile.get(), Logger::printFormat, timeStr,
+            fprintf(Logger::logFile.get(), Logger::filePrintFormat, timeStr,
                     Logger::getLevelName(level), name, message);
 			
             //flush if we're at either warn or error

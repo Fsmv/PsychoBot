@@ -36,6 +36,8 @@ using json = nlohmann::json;
 static Logger logger("main");
 static const std::string CONFIG_FILE = "config.json";
 static json config;
+static bool running;
+static bool output;
 
 static bool loadConfig() {
     std::ifstream f(CONFIG_FILE);
@@ -80,18 +82,38 @@ void luaHello() {
     lua_close(L);
 }
 
+static void repl() {
+    std::cout << "$ " << std::flush;
+    std::string command = "";
+    char c;
+    while((c = getchar()) != '\n') {
+        command += c;
+        
+        output = false;
+    }
+    
+    if (command == "quit") {
+        running = false;
+    } else if (command != "") {
+        std::cout << "Invalid command" << std::endl;
+    }
+}
+
 int main(int argc, char **argv) {
     if(!loadConfig()) {
         logger.error("Failed to load config");
         return 1;
     }
     
-    //luaHello();
+    running = true;
     setWebhook(config["webhook_url"].get<std::string>());
-    
     startServer(atoi(getenv("PORT")), getenv("IP"));
-    std::cout << "Press Enter to stop"<< std::flush;
-    std::cin.ignore();
+
+    output = false;
+    while(running) {
+        repl();
+    }
+    
     stopServer();
     
     return 0;

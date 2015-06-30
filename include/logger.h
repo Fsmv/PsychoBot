@@ -185,10 +185,15 @@ public:
     static const char *getLevelName(LogLevel level);
 
 private:
-    //!The format sent to printf for each log message.
+    //!The format sent to printf for each log message in the console
 	//!When it is sent there are 4 strings in the following order:
     //!time, level, class name, message
-    static const char *printFormat;
+    static const char *consolePrintFormat;
+    
+    //!The format sent to printf for each log message in the file
+	//!When it is sent there are 4 strings in the following order:
+    //!time, level, class name, message
+    static const char *filePrintFormat;
 
     //!The format for the time string in the log messages.
     //!It is sent to strftime, so the string should be what strftime expects
