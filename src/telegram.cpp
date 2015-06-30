@@ -27,7 +27,7 @@ using json = nlohmann::json;
 #include "logger.h"
 static Logger logger("tg api");
 
-const json &getConfigOption(const std::string &option);
+#include "config.h"
 
 static std::string callMethod(std::string method, std::map<std::string, std::string> arguments) {
     using namespace curlpp::options;
@@ -37,8 +37,8 @@ static std::string callMethod(std::string method, std::map<std::string, std::str
         curlpp::Cleanup cleanup;
         curlpp::Easy request;
 
-        request.setOpt<Url>(getConfigOption("api_url").get<std::string>()
-                            + getConfigOption("token").get<std::string>()
+        request.setOpt<Url>(Config::get<std::string>("api_url")
+                            + Config::get<std::string>("token")
                             + "/" + method);
         
         if (arguments.size() != 0) {

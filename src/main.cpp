@@ -21,70 +21,17 @@ extern "C" {
     #include "lauxlib.h"
 }
 
-#include "json.hpp"
-using json = nlohmann::json;
-
 #include <string>
 #include <iostream>
-#include <fstream>
-#include <iterator>
 
 #include "webhooks.h"
 #include "telegram.h"
 #include "logger.h"
+#include "config.h"
 
-static Logger logger("main");
 static const std::string CONFIG_FILE = "config.json";
-static json config;
 static bool running;
 static bool output;
-
-static const std::vector<std::string> REQ_CONF_OPTS = { "token", "api_url", "webhook_url" };
-
-const std::string VERSION = "0.1";
-
-static bool loadConfig() {
-    std::ifstream f(CONFIG_FILE);
-    if(!f.good()) {
-        logger.error("Could not open config file: " + CONFIG_FILE);
-        return false;
-    }
-    
-    std::istream_iterator<char> it(f), eof;
-    std::string config_json(it, eof);
-    
-    try {
-        config = json::parse(config_json);
-    } catch (std::invalid_argument &e) {
-        logger.error("Syntax error in config file: " + std::string(e.what()));
-        return false;
-    }
-    
-    if (config.find("log_file") != config.end()) {
-        Logger::setLogFile(config["log_file"].get<std::string>().c_str());
-    } else {
-        Logger::setLogFile("output.log");
-    }
-    
-    for (auto option : REQ_CONF_OPTS) {
-        if (config.find(option) == config.end()) {
-            logger.error("Missing required config option: " + option);
-            return false;
-        }
-    }
-    
-    if (config.find("log_level") != config.end()) {
-        Logger::setGlobalLogLevel(
-            Logger::parseLogLevel(
-                config["log_level"].get<std::string>().c_str()));
-    }
-    
-    return true;
-}
-
-const json &getConfigOption(const std::string &option) {
-    return config[option];
-}
 
 void luaHello() {
     lua_State *L = luaL_newstate();
@@ -113,13 +60,13 @@ static void repl() {
 }
 
 int main(int argc, char **argv) {
-    if(!loadConfig()) {
+    if(!Config::loadConfig(CONFIG_FILE)) {
         return 1;
     }
     
     running = true;
     
-    if (!setWebhook(config["webhook_url"].get<std::string>())) {
+    if (!setWebhook(Config::get<std::string>("webhook_url"))) {
         return 1;
     }
         

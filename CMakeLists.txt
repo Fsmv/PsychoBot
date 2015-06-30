@@ -6,6 +6,7 @@ set(SOURCES
     src/webhooks.cpp
     src/telegram.cpp
     src/logger.cpp
+    src/config.cpp
 )
 
 set(TESTSRC
