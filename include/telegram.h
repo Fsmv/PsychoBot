@@ -19,8 +19,12 @@
 #define _TELEGRAM_H_
 
 /**
- * Set
+ * Set the webhook url
+ * 
+ * @param url address to set, if "" turn off the webhook
+ * @return true if success, false otherwise
  */
 bool setWebhook(std::string url);
+
 
 #endif

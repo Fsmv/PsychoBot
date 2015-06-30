@@ -39,9 +39,14 @@ static json config;
 static bool running;
 static bool output;
 
+static const std::vector<std::string> REQ_CONF_OPTS = { "token", "api_url", "webhook_url" };
+
+const std::string VERSION = "0.1";
+
 static bool loadConfig() {
     std::ifstream f(CONFIG_FILE);
     if(!f.good()) {
+        logger.error("Could not open config file: " + CONFIG_FILE);
         return false;
     }
     
@@ -51,13 +56,21 @@ static bool loadConfig() {
     try {
         config = json::parse(config_json);
     } catch (std::invalid_argument &e) {
+        logger.error("Syntax error in config file: " + std::string(e.what()));
         return false;
     }
     
-    if (config.find("token") == config.end() ||
-        config.find("api_url") == config.end() ||
-        config.find("webhook_url") == config.end()) {
-        return false;        
+    if (config.find("log_file") != config.end()) {
+        Logger::setLogFile(config["log_file"].get<std::string>().c_str());
+    } else {
+        Logger::setLogFile("output.log");
+    }
+    
+    for (auto option : REQ_CONF_OPTS) {
+        if (config.find(option) == config.end()) {
+            logger.error("Missing required config option: " + option);
+            return false;
+        }
     }
     
     if (config.find("log_level") != config.end()) {
@@ -101,13 +114,18 @@ static void repl() {
 
 int main(int argc, char **argv) {
     if(!loadConfig()) {
-        logger.error("Failed to load config");
         return 1;
     }
     
     running = true;
-    setWebhook(config["webhook_url"].get<std::string>());
-    startServer(atoi(getenv("PORT")), getenv("IP"));
+    
+    if (!setWebhook(config["webhook_url"].get<std::string>())) {
+        return 1;
+    }
+        
+    if(startServer(atoi(getenv("PORT")), getenv("IP"))) {
+        return 1;
+    }
 
     output = false;
     while(running) {
