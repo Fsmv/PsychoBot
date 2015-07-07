@@ -7,6 +7,7 @@ set(SOURCES
     src/telegram.cpp
     src/logger.cpp
     src/config.cpp
+    src/plugins.cpp
 )
 
 set(TESTSRC
