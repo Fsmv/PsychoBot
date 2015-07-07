@@ -28,33 +28,30 @@
 #include <iostream>
 #include <queue>
 #include <mutex>
+#include <condition_variable>
 
 #include <microhttpd.h>
 #include "logger.h"
 
 static Logger logger("Webhooks");
-static std::mutex updatesMutex;
+static std::mutex updatesMutex, conditionMutex;
+static std::condition_variable updateCV;
 static std::queue<json> updates;
 static struct MHD_Daemon *server;
 
-json peekUpdate() {
+std::queue<json> popAllUpdates() {
+    std::queue<json> result;
+    
     updatesMutex.lock();
-    return updates.front();
+    std::swap(result, updates);
     updatesMutex.unlock();
+    
+    return result;
 }
 
-json popUpdate() {
-    updatesMutex.lock();
-    auto front = updates.front();
-    updates.pop();
-    return front;
-    updatesMutex.unlock();
-}
-
-size_t getNumUpdates() {
-    updatesMutex.lock();
-    return updates.size();
-    updatesMutex.unlock();
+void waitForUpdate() {
+    std::unique_lock<std::mutex> l(conditionMutex);
+    updateCV.wait(l);
 }
 
 #define VERIFY_IP
@@ -114,6 +111,7 @@ request_completed (void *cls, struct MHD_Connection *connection,
                        + "\nMessage:\n" + std::string(con_info->message));
         }
         updatesMutex.unlock();
+        updateCV.notify_one();
         
         delete[] con_info->message;
     }
@@ -210,6 +208,7 @@ int startServer(uint16_t port, const char *ip)  {
 }
 
 void stopServer() {
+    updateCV.notify_one();
     if(server) {
         MHD_stop_daemon(server);
         logger.info("Stopped webhooks server");

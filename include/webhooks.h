@@ -19,6 +19,7 @@
 #define _WEBHOOKS_H_
 
 #include <cstdint>
+#include <queue>
 #include "json.hpp"
 using json = nlohmann::json;
 
@@ -37,20 +38,14 @@ int startServer(uint16_t port, const char *ip);
 void stopServer();
 
 /**
- * Gets the top event from the queue without removing it
- * @return the json update data
+ * Gets all of the events from the queue and empties it
+ * @return all of the json updates
  */
-json peekUpdate();
+std::queue<json> popAllUpdates();
 
 /**
- * Gets the top event from the queue and removes it
- * @return the json update data
+ * Blocks until there is an update
  */
-json popUpdate();
-
-/**
- * @return the number of updates in the queue 
- */
-size_t getNumUpdates();
+void waitForUpdate();
 
 #endif

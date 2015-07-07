@@ -15,32 +15,19 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-extern "C" {
-    #include "lua.h"
-    #include "lualib.h"
-    #include "lauxlib.h"
-}
-
 #include <string>
 #include <iostream>
+#include <thread>
 
 #include "webhooks.h"
 #include "telegram.h"
 #include "logger.h"
 #include "config.h"
+#include "plugins.h"
 
 static const std::string CONFIG_FILE = "config.json";
 static bool running;
 static bool output;
-
-void luaHello() {
-    lua_State *L = luaL_newstate();
-    
-    luaL_openlibs(L);
-    luaL_dostring(L, "print('hello, '.._VERSION)");
-    
-    lua_close(L);
-}
 
 static void repl() {
     std::cout << "$ " << std::flush;
@@ -59,12 +46,27 @@ static void repl() {
     }
 }
 
+static void runPlugins() {
+    while (running) {
+        waitForUpdate();
+        
+        std::queue<json> updates = popAllUpdates();
+        while (!updates.empty()) {
+            auto update = updates.front();
+            updates.pop();
+            //TODO call the right plugin based on the update
+        }
+    }
+}
+
 int main(int argc, char **argv) {
     if(!Config::loadConfig(CONFIG_FILE)) {
         return 1;
     }
     
+    loadPlugins();
     running = true;
+    std::thread pluginsThread(runPlugins);
     
     if (!setWebhook(Config::get<std::string>("webhook_url"))) {
         return 1;
@@ -80,6 +82,8 @@ int main(int argc, char **argv) {
     }
     
     stopServer();
+    pluginsThread.join();
+    unloadPlugins();
     
     return 0;
 }
