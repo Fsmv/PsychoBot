@@ -140,11 +140,11 @@ void loadPlugins() {
         return;
     }
     
-    lua_State *L = luaL_newstate();
-    luaL_openlibs(L);
-    
     std::vector<std::string> pluginsToLoad = Config::get<std::vector<std::string>>("plugins");
     for (auto plugin : pluginsToLoad) {
+        lua_State *L = luaL_newstate();
+        luaL_openlibs(L);
+        
         std::vector<std::string> commands, matches;
         struct Plugin p;
         p.name = plugin;
