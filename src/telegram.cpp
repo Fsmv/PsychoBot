@@ -75,3 +75,16 @@ bool setWebhook(std::string url) {
     
     return result;
 }
+
+void tg_send(std::string message, int chat_id) {
+    callMethod("sendMessage", {{"text", message},
+                               {"chat_id", std::to_string(chat_id)}
+                              });
+}
+
+void tg_reply(std::string message, int chat_id, int message_id) {
+    callMethod("sendMessage", {{"text", message},
+                               {"chat_id", std::to_string(chat_id)},
+                               {"reply_to_message_id", std::to_string(message_id)}
+                              });
+}

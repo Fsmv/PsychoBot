@@ -54,7 +54,7 @@ static void runPlugins() {
         while (!updates.empty()) {
             auto update = updates.front();
             updates.pop();
-            //TODO call the right plugin based on the update
+            onUpdate(update);
         }
     }
 }

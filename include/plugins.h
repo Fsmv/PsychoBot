@@ -18,7 +18,12 @@
 #ifndef _PLUGINS_H_
 #define _PLUGINS_H_
 
+#include "json.hpp"
+using json = nlohmann::json;
+
 void loadPlugins();
 void unloadPlugins();
+
+void onUpdate(json message);
 
 #endif

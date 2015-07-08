@@ -26,5 +26,7 @@
  */
 bool setWebhook(std::string url);
 
+void tg_send(std::string message, int chat_id);
+void tg_reply(std::string message, int chat_id, int message_id);
 
 #endif

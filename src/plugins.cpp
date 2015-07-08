@@ -21,8 +21,10 @@
 #include <unordered_map>
 #include <map>
 #include <string>
+#include <regex>
 #include "config.h"
 #include "logger.h"
+#include "telegram.h"
 
 extern "C" {
     #include "lua.h"
@@ -36,14 +38,16 @@ static const std::string pluginsDir = "plugins/";
 struct Plugin {
     lua_State *L;
     std::map<std::string, std::string> commands;
-    std::vector<std::string> matches;
+    std::map<std::string, std::regex> matches;
     std::string description;
+    std::string name;
     bool commandOnly;
 };
 
-static std::unordered_map<std::string, struct Plugin> plugins;
+static int lastUpdateID = 0;
+static std::vector<struct Plugin> plugins;
 
-bool getfield(lua_State *L, const char *key, const char **value) {
+static bool getfield(lua_State *L, const char *key, const char **value) {
     lua_getfield(L, -1, key);
     if (lua_isnil(L, -1)) {
         logger.error("Missing key " + std::string(key));
@@ -58,7 +62,7 @@ bool getfield(lua_State *L, const char *key, const char **value) {
     return true;
 }
 
-bool getfield(lua_State *L, const char *key, bool *value) {
+static bool getfield(lua_State *L, const char *key, bool *value) {
     lua_getfield(L, -1, key);
     if (lua_isnil(L, -1)) {
         logger.error("Missing key " + std::string(key));
@@ -73,7 +77,7 @@ bool getfield(lua_State *L, const char *key, bool *value) {
     return true;
 }
 
-bool getfield_array(lua_State *L, const char *key, std::vector<std::string> *arr) {
+static bool getfield_array(lua_State *L, const char *key, std::vector<std::string> *arr) {
     lua_getfield(L, -1, key);
     if (!lua_istable(L, -1)) {
         logger.error("Invalid type for key " + std::string(key) + " expected array");
@@ -97,7 +101,7 @@ bool getfield_array(lua_State *L, const char *key, std::vector<std::string> *arr
     return true;
 }
 
-bool getusages(lua_State *L, const std::vector<std::string> &commands,
+static bool getusages(lua_State *L, const std::vector<std::string> &commands,
                std::map<std::string, std::string> *commandUsages) {
     // We can hardcode since this method is specific to usages
     lua_getfield(L, -1, "usage");
@@ -119,6 +123,17 @@ bool getusages(lua_State *L, const std::vector<std::string> &commands,
     return true;
 }
 
+static int l_send(lua_State *L);
+static int l_reply(lua_State *L);
+
+// TODO organization
+static void injectAPIFunctions(lua_State *L) {
+    lua_pushcfunction(L, l_send);
+    lua_setglobal(L, "send");
+    lua_pushcfunction(L, l_reply);
+    lua_setglobal(L, "reply");
+}
+
 void loadPlugins() {
     if (!Config::contains("plugins")) {
         logger.info("No plugins specified in config");
@@ -130,8 +145,9 @@ void loadPlugins() {
     
     std::vector<std::string> pluginsToLoad = Config::get<std::vector<std::string>>("plugins");
     for (auto plugin : pluginsToLoad) {
-        std::vector<std::string> commands;
+        std::vector<std::string> commands, matches;
         struct Plugin p;
+        p.name = plugin;
         
         if (luaL_loadfile(L, (pluginsDir + plugin).c_str())) { //load file
             logger.error(lua_tostring(L, -1));
@@ -180,9 +196,18 @@ void loadPlugins() {
             goto LOAD_ERROR;
         }
         
-        if (!getfield_array(L, "matches", &p.matches)) {
+        if (!getfield_array(L, "matches", &matches)) {
             logger.error("Failed to read matches");
             goto LOAD_ERROR;
+        }
+        for (auto match : matches) { // compiled the regexes
+            try {
+                auto reg = std::regex(match);
+                p.matches[match] = reg;
+            } catch (std::regex_error &e) {
+                logger.warn("Failed to load regex " + match + " for plugin " + plugin);
+                logger.warn(e.what());
+            }
         }
         
         if (!getfield_array(L, "commands", &commands)) {
@@ -194,6 +219,8 @@ void loadPlugins() {
             goto LOAD_ERROR;
         }
         
+        injectAPIFunctions(L);
+        
         lua_getglobal(L, "run"); //find getInfo
         if (!lua_isfunction(L, -1)) {
             logger.error("run not defined");
@@ -201,7 +228,7 @@ void loadPlugins() {
         }
         
         logger.info("Loaded plugin " + plugin);
-        plugins[plugin] = p;
+        plugins.push_back(p);
         continue;
 
 LOAD_ERROR:
@@ -213,6 +240,90 @@ LOAD_ERROR:
 
 void unloadPlugins() {
     for (auto plugin : plugins) {
-        lua_close(plugin.second.L);
+        lua_close(plugin.L);
+    }
+}
+
+// Possibly temprory global struct for the current plugin being run
+// to be used by the lua api functions
+static struct {
+    Plugin *plugin;
+    json update;
+    bool regex;
+    std::pair<const std::string, std::regex> *match;
+} currentRun;
+
+static int l_send(lua_State *L) {
+    if (!lua_isstring(L, -1)) {
+        logger.error("Invalid argument to send");
+        return 0;
+    }
+    std::string message = std::string(lua_tostring(L, -1));
+    tg_send(message,
+            currentRun.update["message"]["chat"]["id"].get<int>());
+    return 0;
+}
+
+static int l_reply(lua_State *L) {
+    if (!lua_isstring(L, -1)) {
+        logger.error("Invalid argument to reply");
+        return 0;
+    }
+    std::string message = std::string(lua_tostring(L, -1));
+    tg_reply(message,
+             currentRun.update["message"]["chat"]["id"].get<int>(),
+             currentRun.update["message"]["message_id"].get<int>());
+    return 0;
+}
+
+static void callRun(lua_State *L, const std::string &message, const std::string &match) {
+    lua_pushstring(L, message.c_str());
+    lua_pushstring(L, match.c_str());
+    if(lua_pcall(L, 2, 0, 0)) {
+        logger.error("Error in run function of plugin " + currentRun.plugin->name);
+        logger.error(lua_tostring(L, -1));
+        lua_pop(L, 1);
+    }
+    lua_getglobal(L, "run");
+}
+
+void onUpdate(json update) {
+    if (update.find("update_id") != update.end()) {
+        int update_id = update["update_id"].get<int>();
+        if (lastUpdateID >= update_id) {
+            return; // reject a message we've already seen
+        }
+        lastUpdateID = update_id;
+        
+        if (update.find("message") != update.end() &&
+            update["message"].find("text") != update["message"].end()) {
+            
+            std::string text = update["message"]["text"].get<std::string>();
+            
+            for (auto plugin : plugins) {
+                // check if we called a command this plugin uses
+                for (auto command : plugin.commands) {
+                    if (text.find("/" + command.first) == 0) {
+                        currentRun.plugin = &plugin;
+                        currentRun.update = update;
+                        currentRun.regex = false;
+                        callRun(plugin.L, text, command.first);
+                    }
+                }
+                
+                // check if we called a regex match this plugin uses
+                if (!plugin.commandOnly) {
+                    for (auto match : plugin.matches) {
+                        if (std::regex_search(text, match.second)) {
+                            currentRun.plugin = &plugin;
+                            currentRun.update = update;
+                            currentRun.regex = true;
+                            currentRun.match = &match;
+                            callRun(plugin.L, text, match.first);
+                        }
+                    }
+                }
+            }
+        }
     }
 }
