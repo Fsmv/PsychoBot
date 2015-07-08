@@ -25,6 +25,7 @@
 #include "config.h"
 #include "logger.h"
 #include "telegram.h"
+#include "luaapi.h"
 
 extern "C" {
     #include "lua.h"
@@ -121,17 +122,6 @@ static bool getusages(lua_State *L, const std::vector<std::string> &commands,
     
     lua_pop(L, 1);
     return true;
-}
-
-static int l_send(lua_State *L);
-static int l_reply(lua_State *L);
-
-// TODO organization
-static void injectAPIFunctions(lua_State *L) {
-    lua_pushcfunction(L, l_send);
-    lua_setglobal(L, "send");
-    lua_pushcfunction(L, l_reply);
-    lua_setglobal(L, "reply");
 }
 
 void loadPlugins() {
@@ -246,35 +236,7 @@ void unloadPlugins() {
 
 // Possibly temprory global struct for the current plugin being run
 // to be used by the lua api functions
-static struct {
-    Plugin *plugin;
-    json update;
-    bool regex;
-    std::pair<const std::string, std::regex> *match;
-} currentRun;
-
-static int l_send(lua_State *L) {
-    if (!lua_isstring(L, -1)) {
-        logger.error("Invalid argument to send");
-        return 0;
-    }
-    std::string message = std::string(lua_tostring(L, -1));
-    tg_send(message,
-            currentRun.update["message"]["chat"]["id"].get<int>());
-    return 0;
-}
-
-static int l_reply(lua_State *L) {
-    if (!lua_isstring(L, -1)) {
-        logger.error("Invalid argument to reply");
-        return 0;
-    }
-    std::string message = std::string(lua_tostring(L, -1));
-    tg_reply(message,
-             currentRun.update["message"]["chat"]["id"].get<int>(),
-             currentRun.update["message"]["message_id"].get<int>());
-    return 0;
-}
+struct runningPlugin currentRun;
 
 static void callRun(lua_State *L, const std::string &message, const std::string &match) {
     lua_pushstring(L, message.c_str());

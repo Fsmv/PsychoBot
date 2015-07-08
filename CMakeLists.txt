@@ -8,6 +8,7 @@ set(SOURCES
     src/logger.cpp
     src/config.cpp
     src/plugins.cpp
+    src/luaapi.cpp
 )
 
 set(TESTSRC
