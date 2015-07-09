@@ -18,6 +18,11 @@
 #ifndef _TELEGRAM_H_
 #define _TELEGRAM_H_
 
+#include <string>
+#include "json.hpp"
+using json = nlohmann::json;
+
+
 /**
  * Set the webhook url
  * 
@@ -28,5 +33,13 @@ bool setWebhook(std::string url);
 
 void tg_send(std::string message, int chat_id);
 void tg_reply(std::string message, int chat_id, int message_id);
+
+/**
+ * Returns the message text from a given Update object (in the telegram api)
+ * 
+ * @param update the Update object from telegram to parse
+ * @return The update text. Returns "" if there was no text.
+ */
+std::string getMessageText(const json &update);
 
 #endif

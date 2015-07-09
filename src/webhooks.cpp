@@ -54,7 +54,7 @@ void waitForUpdate() {
     updateCV.wait(l);
 }
 
-#define VERIFY_IP
+//#define VERIFY_IP
 // 1 MB
 #define MAX_MESSAGE_LEN (8*1024*1024)
 #define POST_BUFFER_SIZE 65536

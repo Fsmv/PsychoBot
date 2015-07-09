@@ -7,7 +7,7 @@ set(SOURCES
     src/telegram.cpp
     src/logger.cpp
     src/config.cpp
-    src/plugins.cpp
+    src/plugin.cpp
     src/luaapi.cpp
 )
 

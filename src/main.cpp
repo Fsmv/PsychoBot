@@ -23,7 +23,7 @@
 #include "telegram.h"
 #include "logger.h"
 #include "config.h"
-#include "plugins.h"
+#include "plugin.h"
 
 static const std::string CONFIG_FILE = "config.json";
 static bool running;
@@ -47,14 +47,30 @@ static void repl() {
 }
 
 static void runPlugins() {
-    while (running) {
-        waitForUpdate();
-        
-        std::queue<json> updates = popAllUpdates();
-        while (!updates.empty()) {
-            auto update = updates.front();
-            updates.pop();
-            onUpdate(update);
+    std::vector<Plugin> plugins;
+    if (loadPlugins(&plugins)) {
+        while (running) {
+            waitForUpdate();
+            
+            std::queue<json> updates = popAllUpdates();
+            while (!updates.empty()) {
+                auto update = updates.front();
+                updates.pop();
+                
+                static int lastUpdateID = 0;
+                if (update.find("update_id") != update.end()) {
+                    int update_id = update["update_id"].get<int>();
+                    if (lastUpdateID >= update_id) {
+                        continue; // reject a message we've already seen
+                    }
+                    lastUpdateID = update_id;
+                }
+                            
+                std::for_each(plugins.begin(), plugins.end(),
+                [&update](Plugin &p) {
+                    p.run(update);
+                });
+            }
         }
     }
 }
@@ -63,8 +79,7 @@ int main(int argc, char **argv) {
     if(!Config::loadConfig(CONFIG_FILE)) {
         return 1;
     }
-    
-    loadPlugins();
+
     running = true;
     std::thread pluginsThread(runPlugins);
     
@@ -83,7 +98,6 @@ int main(int argc, char **argv) {
     
     stopServer();
     pluginsThread.join();
-    unloadPlugins();
     
     return 0;
 }

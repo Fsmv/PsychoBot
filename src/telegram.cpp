@@ -21,9 +21,6 @@
 #include <curlpp/Easy.hpp>
 #include <curlpp/Options.hpp>
 
-#include "json.hpp"
-using json = nlohmann::json;
-
 #include "logger.h"
 static Logger logger("tg api");
 
@@ -87,4 +84,14 @@ void tg_reply(std::string message, int chat_id, int message_id) {
                                {"chat_id", std::to_string(chat_id)},
                                {"reply_to_message_id", std::to_string(message_id)}
                               });
+}
+
+std::string getMessageText(const json &update) {
+    if (update.find("message") != update.end() &&
+        update["message"].find("text") != update["message"].end()) {
+        
+        return update["message"]["text"].get<std::string>();
+    }
+    
+    return "";
 }

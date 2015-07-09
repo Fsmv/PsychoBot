@@ -28,13 +28,6 @@ using json = nlohmann::json;
 struct lua_State;
 struct Plugin;
 
-struct runningPlugin {
-    Plugin *plugin;
-    json update;
-    bool regex;
-    std::pair<const std::string, std::regex> *match;
-};
-
 /**
  * Adds the lua api functions to the globals of the provided lua_State
  * 
