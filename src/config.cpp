@@ -23,7 +23,7 @@
 #include <string>
 
 static Logger logger("config");
-const std::string Config::VERSION = "0.2.0";
+const std::string Config::VERSION = "0.1.0";
 const std::array<std::string, 3> Config::REQ_CONF_OPTS = { "token", "api_url", "webhook_url" };
 json Config::config;
 

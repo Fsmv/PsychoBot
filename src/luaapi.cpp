@@ -27,12 +27,24 @@ extern "C" {
     #include "lauxlib.h"
 }
 
+static const PluginRunState *getRunState(lua_State *L) {
+    lua_getglobal(L, "TG_RUN_STATE");
+    if(lua_islightuserdata(L, -1)) {
+        const void *ptr = lua_topointer(L, -1);
+        lua_pop(L, 1);
+        return reinterpret_cast<const PluginRunState *>(ptr);
+    }
+    
+    return nullptr;
+}
+
 static int l_send(lua_State *L) {
-    if (!lua_islightuserdata(L, -2) || !lua_isstring(L, -1)) {
+    if (!lua_isstring(L, -1)) {
         logger.error("Invalid argument to send");
         return 0;
     }
-    const PluginRunState *currentRun = reinterpret_cast<const PluginRunState*>(lua_topointer(L, -2));
+    
+    const PluginRunState *currentRun = getRunState(L);
     
     std::string message = std::string(lua_tostring(L, -1));
     tg_send(message,
@@ -41,11 +53,11 @@ static int l_send(lua_State *L) {
 }
 
 static int l_reply(lua_State *L) {
-    if (!lua_islightuserdata(L, -2) || !lua_isstring(L, -1)) {
+    if (!lua_isstring(L, -1)) {
         logger.error("Invalid argument to reply");
         return 0;
     }
-    const PluginRunState *currentRun = reinterpret_cast<const PluginRunState*>(lua_topointer(L, -2));
+    const PluginRunState *currentRun = getRunState(L);
     
     std::string message = std::string(lua_tostring(L, -1));
     tg_reply(message,

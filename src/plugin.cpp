@@ -190,10 +190,12 @@ Plugin::Plugin(const std::string &filename) : luaState(luaL_newstate(), lua_clos
 }
 
 static void callRun(lua_State *L, const std::string &message, const std::string &match, PluginRunState *state) {
+    lua_pushlightuserdata(L, state);
+    lua_setglobal(L, "TG_RUN_STATE");
+    
     lua_pushstring(L, message.c_str());
     lua_pushstring(L, match.c_str());
-    lua_pushlightuserdata(L, state);
-    if(lua_pcall(L, 3, 0, 0)) {
+    if(lua_pcall(L, 2, 0, 0)) {
         logger.error("Error in run function of plugin " + state->plugin->getName());
         logger.error(lua_tostring(L, -1));
         lua_pop(L, 1);
