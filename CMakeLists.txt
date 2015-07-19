@@ -17,6 +17,8 @@ set(TESTSRC
 file(DOWNLOAD https://github.com/nlohmann/json/raw/48c4f4d05d8ad019846b3e51e6e5d6732296e228/src/json.hpp ${CMAKE_SOURCE_DIR}/include/json.hpp
      EXPECTED_MD5 ddd0352e8c49fe7661d38523ecbd294a)
 
+message("GCC Version: ${CMAKE_CXX_COMPILER_VERSION}")
+
 set(CMAKE_CXX_FLAGS "-std=c++11")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
@@ -40,7 +42,7 @@ add_executable(
 
 #math library
 if(UNIX)
-    target_link_libraries(${CMAKE_PROJECT_NAME} m)
+    target_link_libraries(${CMAKE_PROJECT_NAME} m pthread)
 endif(UNIX)
 
 target_link_libraries(${CMAKE_PROJECT_NAME} ${LUA_LIBRARIES})

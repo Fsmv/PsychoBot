@@ -112,6 +112,30 @@ static bool getusages(lua_State *L, const std::vector<std::string> &commands,
     return true;
 }
 
+static bool checkVersion(std::string v) {
+    static const std::regex versionCheck("\\d+\\.\\d+\\.\\d+");
+    if (!std::regex_match(v, versionCheck)) {
+        return false;
+    }
+    
+    int bot_maj, bot_min, bot_patch;
+    std::stringstream(Config::VERSION) >> bot_maj >> bot_min >> bot_patch;
+    int v_maj, v_min, v_patch;
+    std::stringstream(Config::VERSION) >> v_maj >> v_min >> v_patch;
+    
+    if (bot_maj != v_maj) {
+        return bot_maj < v_maj;
+    }
+    if (bot_min != v_min) {
+        return bot_min < v_min;
+    }
+    if (bot_patch != v_patch) {
+        return bot_patch < v_patch;
+    }
+    
+    return true;
+}
+
 Plugin::Plugin(const std::string &filename) : luaState(luaL_newstate(), lua_close), name(filename) {
     lua_State *L = luaState.get();
     luaL_openlibs(L);
@@ -144,9 +168,9 @@ Plugin::Plugin(const std::string &filename) : luaState(luaL_newstate(), lua_clos
     if (!getfield(L, "version", &v)) {
         throw std::invalid_argument("Did not define version");
     }
-    if (Config::VERSION != std::string(v)) {
-        throw std::invalid_argument("Expected version "
-            + std::string(v) + " bot version: " + Config::VERSION);
+    if (!checkVersion(std::string(v))) {
+        throw std::invalid_argument("Plugin version "
+            + std::string(v) + " not compatible with bot version: " + Config::VERSION);
     }
     
     if (!getfield(L, "description", &v)) {

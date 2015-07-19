@@ -27,6 +27,38 @@ extern "C" {
     #include "lauxlib.h"
 }
 
+
+void pushJsonTable(lua_State *L, const json &j) {
+    lua_newtable(L);
+    int i = 0;
+    //TODO: stack overflow if we get a giant json object
+    for (auto elm = j.begin(); elm != j.end(); ++elm) {
+        lua_pushstring(L, elm.key().c_str());
+        
+        switch (elm->type()) {
+            case json::value_t::null:
+                lua_pushnil(L);
+                break;
+            case json::value_t::object:
+            case json::value_t::array:
+                pushJsonTable(L, *elm);
+                break;
+            case json::value_t::string:
+                lua_pushstring(L, elm->get<std::string>().c_str());
+                break;
+            case json::value_t::boolean:
+                lua_pushboolean(L, elm->get<bool>());
+                break;
+            case json::value_t::number_integer:
+            case json::value_t::number_float:
+                lua_pushnumber(L, elm->get<float>());
+                break;
+        }
+        
+        lua_settable(L, -3);
+    }
+}
+
 static const PluginRunState *getRunState(lua_State *L) {
     lua_getglobal(L, "TG_RUN_STATE");
     if(lua_islightuserdata(L, -1)) {
@@ -66,9 +98,17 @@ static int l_reply(lua_State *L) {
     return 0;
 }
 
+static int l_getSender(lua_State *L) {
+    const PluginRunState *currentRun = getRunState(L);
+    pushJsonTable(L, currentRun->update["message"]["from"]);
+    return 1;
+}
+
 void injectAPIFunctions(lua_State *L) {
     lua_pushcfunction(L, l_send);
     lua_setglobal(L, "send");
     lua_pushcfunction(L, l_reply);
     lua_setglobal(L, "reply");
+    lua_pushcfunction(L, l_getSender);
+    lua_setglobal(L, "getSender");
 }
