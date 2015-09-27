@@ -34,7 +34,7 @@ public:
     }
     
     static const std::array<std::string, 3> REQ_CONF_OPTS;
-    static const std::string VERSION;
+    static const std::string PB_VERSION;
     
 private:
     Config() {}

@@ -119,9 +119,9 @@ static bool checkVersion(std::string v) {
     }
     
     int bot_maj, bot_min, bot_patch;
-    std::stringstream(Config::VERSION) >> bot_maj >> bot_min >> bot_patch;
+    std::stringstream(Config::PB_VERSION) >> bot_maj >> bot_min >> bot_patch;
     int v_maj, v_min, v_patch;
-    std::stringstream(Config::VERSION) >> v_maj >> v_min >> v_patch;
+    std::stringstream(Config::PB_VERSION) >> v_maj >> v_min >> v_patch;
     
     if (bot_maj != v_maj) {
         return bot_maj < v_maj;
@@ -170,7 +170,7 @@ Plugin::Plugin(const std::string &filename) : luaState(luaL_newstate(), lua_clos
     }
     if (!checkVersion(std::string(v))) {
         throw std::invalid_argument("Plugin version "
-            + std::string(v) + " not compatible with bot version: " + Config::VERSION);
+            + std::string(v) + " not compatible with bot version: " + Config::PB_VERSION);
     }
     
     if (!getfield(L, "description", &v)) {
