@@ -86,8 +86,9 @@ int main(int argc, char **argv) {
     if (!setWebhook(Config::get<std::string>("webhook_url"))) {
         return 1;
     }
-        
-    if(startServer(atoi(getenv("PORT")), getenv("IP"))) {
+      
+    if(startServer(Config::get<int>("port", 80), Config::get<std::string>("bind_address", "0.0.0.0").c_str())) {  
+    //if(startServer(atoi(getenv("PORT")), getenv("IP"))) {
         return 1;
     }
 

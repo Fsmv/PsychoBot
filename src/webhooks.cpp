@@ -186,17 +186,25 @@ answer_to_connection (void *cls, struct MHD_Connection *connection,
 }
 
 int startServer(uint16_t port, const char *ip)  {
-    struct sockaddr_in ipaddr;
-    ipaddr.sin_family = AF_INET;
-    ipaddr.sin_port = htons(port);
-    inet_pton(AF_INET, ip, &ipaddr.sin_addr);
+    if (strcmp(ip, "0.0.0.0") == 0) {
+        server = MHD_start_daemon(MHD_USE_SELECT_INTERNALLY | MHD_USE_DEBUG,
+                                  port, NULL, NULL,
+                                  &answer_to_connection, NULL,
+                                  MHD_OPTION_NOTIFY_COMPLETED, request_completed, NULL,
+                                  MHD_OPTION_END);
+    } else {
+        struct sockaddr_in ipaddr;
+        ipaddr.sin_family = AF_INET;
+        ipaddr.sin_port = htons(port);
+        inet_pton(AF_INET, ip, &ipaddr.sin_addr);
     
-    server = MHD_start_daemon(MHD_USE_SELECT_INTERNALLY | MHD_USE_DEBUG,
-                              0, NULL, NULL,
-                              &answer_to_connection, NULL,
-                              MHD_OPTION_SOCK_ADDR, &ipaddr,
-                              MHD_OPTION_NOTIFY_COMPLETED, request_completed, NULL,
-                              MHD_OPTION_END);
+        server = MHD_start_daemon(MHD_USE_SELECT_INTERNALLY | MHD_USE_DEBUG,
+                                  port, NULL, NULL,
+                                  &answer_to_connection, NULL,
+                                  MHD_OPTION_SOCK_ADDR, &ipaddr,
+                                  MHD_OPTION_NOTIFY_COMPLETED, request_completed, NULL,
+                                  MHD_OPTION_END);
+    }
                               
     if (!server) {
         logger.error("Failed to start webhooks server on " + std::string(ip) + ":" + std::to_string(port));

@@ -32,6 +32,15 @@ public:
     static T get(const std::string &option) {
         return Config::config[option].get<T>();
     }
+
+    template<typename T>
+    static T get(const std::string &option, const T &default_value) {
+        if (contains(option)) {
+            return Config::config[option].get<T>();
+        } else {
+            return default_value;
+        }
+    }
     
     static const std::array<std::string, 3> REQ_CONF_OPTS;
     static const std::string PB_VERSION;
