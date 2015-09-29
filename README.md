@@ -5,7 +5,7 @@ Install the dependecies:
  `sudo apt-get install cmake check libmicrohttpd-dev lua5.2-dev libcurlpp-dev libcurl4-openssl-dev`
  
 Then to build:
- `mkdir bulid && cd build && cmake .. && make`
+ `mkdir build && cd build && cmake .. && make`
  
 Configuration
 =============

@@ -1,19 +1,19 @@
-/**
- *  Copyright (C) 2015  Andrew Kallmeyer <fsmv@sapium.net>
- *
- *  This program is free software: you can redistribute it and/or modify
- *  it under the terms of the Lesser GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  Lesser GNU General Public License for more details.
- *
- *  You should have received a copy of the Lesser GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+    /**
+     *  Copyright (C) 2015  Andrew Kallmeyer <fsmv@sapium.net>
+     *
+     *  This program is free software: you can redistribute it and/or modify
+     *  it under the terms of the Lesser GNU General Public License as published by
+     *  the Free Software Foundation, either version 3 of the License, or
+     *  (at your option) any later version.
+     *
+     *  This program is distributed in the hope that it will be useful,
+     *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+     *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+     *  Lesser GNU General Public License for more details.
+     *
+     *  You should have received a copy of the Lesser GNU General Public License
+     *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+     */
 
 #include "plugin.h"
 
@@ -27,101 +27,101 @@
 #include "telegram.h"
 #include "luaapi.h"
 
-extern "C" {
-    #include "lua.h"
-    #include "lualib.h"
-    #include "lauxlib.h"
-}
+    extern "C" {
+        #include "lua.h"
+        #include "lualib.h"
+        #include "lauxlib.h"
+    }
 
-static Logger logger("Plugins");
-static const std::string pluginsDir = "plugins/";
+    static Logger logger("Plugins");
+    static const std::string pluginsDir = "plugins/";
 
-static bool getfield(lua_State *L, const char *key, const char **value) {
-    lua_getfield(L, -1, key);
-    if (lua_isnil(L, -1)) {
-        logger.error("Missing key " + std::string(key));
-        return false;
-    }
-    if (!lua_isstring(L, -1)) {
-        logger.error("Invalid type for key " + std::string(key) + " expected string");
-        return false;
-    }
-    *value = lua_tostring(L, -1);
-    lua_pop(L, 1);
-    return true;
-}
-
-static bool getfield(lua_State *L, const char *key, bool *value) {
-    lua_getfield(L, -1, key);
-    if (lua_isnil(L, -1)) {
-        logger.error("Missing key " + std::string(key));
-        return false;
-    }
-    if (!lua_isboolean(L, -1)) {
-        logger.error("Invalid type for key " + std::string(key) + " expected boolean");
-        return false;
-    }
-    *value = lua_toboolean(L, -1);
-    lua_pop(L, 1);
-    return true;
-}
-
-static bool getfield_array(lua_State *L, const char *key, std::vector<std::string> *arr) {
-    lua_getfield(L, -1, key);
-    if (!lua_istable(L, -1)) {
-        logger.error("Invalid type for key " + std::string(key) + " expected array");
-        return false;
-    }
-    
-    size_t n = lua_rawlen(L, -1);
-    for (int i = 1; i <= n; ++i) {
-        lua_rawgeti(L, -1, i);
+    static bool getfield(lua_State *L, const char *key, const char **value) {
+        lua_getfield(L, -1, key);
+        if (lua_isnil(L, -1)) {
+            logger.error("Missing key " + std::string(key));
+            return false;
+        }
         if (!lua_isstring(L, -1)) {
-            logger.error("Invalid type in string array index=" + std::to_string(i));
+            logger.error("Invalid type for key " + std::string(key) + " expected string");
             return false;
         }
-        const char *v;
-        v = lua_tostring(L, -1);
+        *value = lua_tostring(L, -1);
         lua_pop(L, 1);
-        arr->push_back(v);
+        return true;
     }
-    
-    lua_pop(L, 1);
-    return true;
-}
 
-static bool getusages(lua_State *L, const std::vector<std::string> &commands,
-               std::map<std::string, std::string> *commandUsages) {
-    // We can hardcode since this method is specific to usages
-    lua_getfield(L, -1, "usage");
-    if (!lua_istable(L, -1)) {
-        logger.error("Invalid type for key usage expected array");
-        return false;
-    }
-    
-    for (std::string command : commands) {
-        const char *usage;
-        if(!getfield(L, command.c_str(), &usage)) {
-            logger.error("in usages");
+    static bool getfield(lua_State *L, const char *key, bool *value) {
+        lua_getfield(L, -1, key);
+        if (lua_isnil(L, -1)) {
+            logger.error("Missing key " + std::string(key));
             return false;
         }
-        (*commandUsages)[command] = std::string(usage);
+        if (!lua_isboolean(L, -1)) {
+            logger.error("Invalid type for key " + std::string(key) + " expected boolean");
+            return false;
+        }
+        *value = lua_toboolean(L, -1);
+        lua_pop(L, 1);
+        return true;
     }
-    
-    lua_pop(L, 1);
-    return true;
-}
 
-static bool checkVersion(std::string v) {
-    static const std::regex versionCheck("\\d+\\.\\d+\\.\\d+");
-    if (!std::regex_match(v, versionCheck)) {
-        return false;
+    static bool getfield_array(lua_State *L, const char *key, std::vector<std::string> *arr) {
+        lua_getfield(L, -1, key);
+        if (!lua_istable(L, -1)) {
+            logger.error("Invalid type for key " + std::string(key) + " expected array");
+            return false;
+        }
+        
+        size_t n = lua_rawlen(L, -1);
+        for (int i = 1; i <= n; ++i) {
+            lua_rawgeti(L, -1, i);
+            if (!lua_isstring(L, -1)) {
+                logger.error("Invalid type in string array index=" + std::to_string(i));
+                return false;
+            }
+            const char *v;
+            v = lua_tostring(L, -1);
+            lua_pop(L, 1);
+            arr->push_back(v);
+        }
+        
+        lua_pop(L, 1);
+        return true;
     }
-    
-    int bot_maj, bot_min, bot_patch;
-    std::stringstream(Config::PB_VERSION) >> bot_maj >> bot_min >> bot_patch;
-    int v_maj, v_min, v_patch;
-    std::stringstream(Config::PB_VERSION) >> v_maj >> v_min >> v_patch;
+
+    static bool getusages(lua_State *L, const std::vector<std::string> &commands,
+                   std::map<std::string, std::string> *commandUsages) {
+        // We can hardcode since this method is specific to usages
+        lua_getfield(L, -1, "usage");
+        if (!lua_istable(L, -1)) {
+            logger.error("Invalid type for key usage expected array");
+            return false;
+        }
+        
+        for (std::string command : commands) {
+            const char *usage;
+            if(!getfield(L, command.c_str(), &usage)) {
+                logger.error("in usages");
+                return false;
+            }
+            (*commandUsages)[command] = std::string(usage);
+        }
+        
+        lua_pop(L, 1);
+        return true;
+    }
+
+    static bool checkVersion(std::string v) {
+        static const std::regex versionCheck("\\d+\\.\\d+\\.\\d+");
+        if (!std::regex_match(v, versionCheck)) {
+            return false;
+        }
+        
+        int bot_maj, bot_min, bot_patch;
+        std::stringstream(Config::PB_VERSION) >> bot_maj >> bot_min >> bot_patch;
+        int v_maj, v_min, v_patch;
+        std::stringstream(Config::PB_VERSION) >> v_maj >> v_min >> v_patch;
     
     if (bot_maj != v_maj) {
         return bot_maj < v_maj;
