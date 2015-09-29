@@ -29,7 +29,7 @@ using json = nlohmann::json;
  * @param url address to set, if "" turn off the webhook
  * @return true if success, false otherwise
  */
-bool setWebhook(std::string url);
+bool setWebhook(std::string url, std::string certFile = "");
 
 void tg_send(std::string message, int chat_id);
 void tg_reply(std::string message, int chat_id, int message_id);

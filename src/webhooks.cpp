@@ -71,9 +71,9 @@ struct connection_info {
 static int send_page (struct MHD_Connection *connection, const char *page) {
     int ret;
     struct MHD_Response *response;
-  
+
     response = MHD_create_response_from_buffer (strlen (page), (void *) page,
-				                              MHD_RESPMEM_PERSISTENT);
+                                                MHD_RESPMEM_PERSISTENT);
     if (!response) {
         return MHD_NO;
     }
@@ -98,7 +98,7 @@ request_completed (void *cls, struct MHD_Connection *connection,
                    void **con_cls, enum MHD_RequestTerminationCode toe) {
 
     struct connection_info *con_info = (struct connection_info*)*con_cls;
-    
+
     if (!con_info) return;
     if (con_info->message) {
         updatesMutex.lock();
@@ -112,10 +112,10 @@ request_completed (void *cls, struct MHD_Connection *connection,
         }
         updatesMutex.unlock();
         updateCV.notify_one();
-        
+
         delete[] con_info->message;
     }
-    
+
     delete con_info;
     *con_cls = nullptr;
 }
@@ -135,53 +135,53 @@ answer_to_connection (void *cls, struct MHD_Connection *connection,
                       const char *url, const char *method,
                       const char *version, const char *upload_data,
                       size_t *upload_data_size, void **con_cls) {
-                          
+
     if (!*con_cls) { // new request
         if (strcmp(method, "POST") == 0) {
             if(!checkIP(connection)) {
                 logger.debug("Rejected packet from " + getIP(connection));
                 return MHD_NO;
             }
-            
+
             // create the persistent connection info object
             struct connection_info *con_info = new struct connection_info;
             con_info->message = nullptr;
             con_info->message_len = 0;
             con_info->valid = true;
-            
+
             *con_cls = (void*)con_info;
             return MHD_YES;
         }
-        
+
         logger.debug("Rejected non-POST message");
         return MHD_NO;
     }
-    
+
     if (strcmp(method, "POST") == 0) {
         struct connection_info *con_info = (struct connection_info*)*con_cls;
-        
+
         // if there is some data
         if (*upload_data_size != 0) {
             // process all of the data with the postprocessor
             char *newmsg = new char[con_info->message_len + *upload_data_size + 1];
-            
+
             if (con_info->message) {
                 strncpy(newmsg, con_info->message, con_info->message_len);
                 delete[] con_info->message;
             }
-            
+
             strncpy(newmsg + con_info->message_len, upload_data, *upload_data_size);
             con_info->message_len += *upload_data_size;
             newmsg[con_info->message_len] = '\0';
             con_info->message = newmsg;
-            
+
             *upload_data_size = 0;
             return MHD_YES;
         } else {
             return send_page(connection, " ");
         }
     }
-    
+
     return MHD_NO;
 }
 
@@ -197,7 +197,7 @@ int startServer(uint16_t port, const char *ip)  {
         ipaddr.sin_family = AF_INET;
         ipaddr.sin_port = htons(port);
         inet_pton(AF_INET, ip, &ipaddr.sin_addr);
-    
+
         server = MHD_start_daemon(MHD_USE_SELECT_INTERNALLY | MHD_USE_DEBUG,
                                   port, NULL, NULL,
                                   &answer_to_connection, NULL,
@@ -205,12 +205,12 @@ int startServer(uint16_t port, const char *ip)  {
                                   MHD_OPTION_NOTIFY_COMPLETED, request_completed, NULL,
                                   MHD_OPTION_END);
     }
-                              
+
     if (!server) {
         logger.error("Failed to start webhooks server on " + std::string(ip) + ":" + std::to_string(port));
         return 1;
     }
-    
+
     logger.info("Started webhooks server on " + std::string(ip) + ":" + std::to_string(port));
     return 0;
 }

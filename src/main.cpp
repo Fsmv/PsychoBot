@@ -35,10 +35,9 @@ static void repl() {
     char c;
     while((c = getchar()) != '\n') {
         command += c;
-        
         output = false;
     }
-    
+
     if (command == "quit") {
         running = false;
     } else if (command != "") {
@@ -51,12 +50,12 @@ static void runPlugins() {
     if (loadPlugins(&plugins)) {
         while (running) {
             waitForUpdate();
-            
+
             std::queue<json> updates = popAllUpdates();
             while (!updates.empty()) {
                 auto update = updates.front();
                 updates.pop();
-                
+
                 static int lastUpdateID = 0;
                 if (update.find("update_id") != update.end()) {
                     int update_id = update["update_id"].get<int>();
@@ -65,7 +64,7 @@ static void runPlugins() {
                     }
                     lastUpdateID = update_id;
                 }
-                            
+
                 std::for_each(plugins.begin(), plugins.end(),
                 [&update](Plugin &p) {
                     p.run(update);
@@ -82,11 +81,12 @@ int main(int argc, char **argv) {
 
     running = true;
     std::thread pluginsThread(runPlugins);
-    
-    if (!setWebhook(Config::get<std::string>("webhook_url"))) {
+
+    if (!setWebhook(Config::get<std::string>("webhook_url"), 
+               Config::get<std::string>("webhook_self_signed_cert_file", ""))) {
         return 1;
     }
-      
+
     if(startServer(Config::get<int>("port", 80), Config::get<std::string>("bind_address", "0.0.0.0").c_str())) {  
     //if(startServer(atoi(getenv("PORT")), getenv("IP"))) {
         return 1;
@@ -96,9 +96,9 @@ int main(int argc, char **argv) {
     while(running) {
         repl();
     }
-    
+
     stopServer();
     pluginsThread.join();
-    
+
     return 0;
 }
