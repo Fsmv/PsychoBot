@@ -19,6 +19,7 @@
 #include "telegram.h"
 #include "plugin.h"
 #include "logger.h"
+#include "config.h"
 static Logger logger("LuaAPI");
 
 extern "C" {
@@ -104,6 +105,22 @@ static int l_getSender(lua_State *L) {
     return 1;
 }
 
+static int l_getConfig(lua_State *L) {
+    if (!lua_isstring(L, -1)) {
+        logger.error("Invalid argument to getConfig");
+        lua_pushnil(L);
+        return 1;
+    }
+    std::string confopt = std::string(lua_tostring(L, -1));
+    if (Config::contains(confopt)) {
+        logger.debug(Config::get<std::string>(confopt).c_str());
+        lua_pushstring(L, Config::get<std::string>(confopt).c_str());
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
+}
+
 void injectAPIFunctions(lua_State *L) {
     lua_pushcfunction(L, l_send);
     lua_setglobal(L, "send");
@@ -111,4 +128,6 @@ void injectAPIFunctions(lua_State *L) {
     lua_setglobal(L, "reply");
     lua_pushcfunction(L, l_getSender);
     lua_setglobal(L, "getSender");
+    lua_pushcfunction(L, l_getConfig);
+    lua_setglobal(L, "getConfig");
 }
