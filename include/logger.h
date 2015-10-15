@@ -59,11 +59,11 @@ public:
      *
      * @param name the name to identify this instance
      * @param localLoglevel the local maximum logging level
-	 * @param forceFlush force the log file to flush every time this logger
-	 *        instance prints.
+     * @param forceFlush force the log file to flush every time this logger
+     *        instance prints.
      */
     Logger(const char *name, LogLevel localLogLevel = LVL_ERROR,
-		   bool forceFlush = false)
+           bool forceFlush = false)
         : name(name), localLevel(localLogLevel), forceFlush(forceFlush) {}
     ~Logger() {}
 
@@ -130,21 +130,21 @@ public:
      */
     void setLocalLogLevel(LogLevel level);
 
-	/**
-	 * Returns whether or not this instance forces flushing the log file
-	 * @returns whether we force flushing or not
-	 */
-	bool getForceFlush() const;
+    /**
+     * Returns whether or not this instance forces flushing the log file
+     * @returns whether we force flushing or not
+     */
+    bool getForceFlush() const;
 
-	/**
-	 * Sets whether or not this instance forces flushing the log file
-	 *
-	 * This is a slight performance hit, but if your class is infrequently
-	 * logging important information this may be what you need.
-	 *
-	 * @param forceFlush whether or not we should force flushing
-	 */
-	void setForceFlush(bool forceFlush);
+    /**
+     * Sets whether or not this instance forces flushing the log file
+     *
+     * This is a slight performance hit, but if your class is infrequently
+     * logging important information this may be what you need.
+     *
+     * @param forceFlush whether or not we should force flushing
+     */
+    void setForceFlush(bool forceFlush);
 
     /**
      * Sets the file to log to
@@ -186,12 +186,12 @@ public:
 
 private:
     //!The format sent to printf for each log message in the console
-	//!When it is sent there are 4 strings in the following order:
+    //!When it is sent there are 4 strings in the following order:
     //!time, level, class name, message
     static const char *consolePrintFormat;
-    
+
     //!The format sent to printf for each log message in the file
-	//!When it is sent there are 4 strings in the following order:
+    //!When it is sent there are 4 strings in the following order:
     //!time, level, class name, message
     static const char *filePrintFormat;
 
@@ -199,9 +199,9 @@ private:
     //!It is sent to strftime, so the string should be what strftime expects
     //!If you change this you'll also have to change the MAX_TIME_STR_LEN
     //!define in Logger.cpp
-	static const char *timeFormat;
+    static const char *timeFormat;
 
-	//!A list of the names for each log level in order.
+    //!A list of the names for each log level in order.
     //!Used for converting enums to strings
     static const char *levelStr[4];
 
@@ -215,8 +215,8 @@ private:
     const char *name;
     //!The log level for this instance which may override the global level
     LogLevel localLevel;
-	//!If true this instance flushes the file every time it prints
-	bool forceFlush;
+    //!If true this instance flushes the file every time it prints
+    bool forceFlush;
 };
 
 #endif
