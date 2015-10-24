@@ -36,12 +36,13 @@ class Plugin {
 public:
     /**
      * Loads a plugin from a lua source file
-     * 
-     * @param filename the full path to the lua source file
+     *
+     * @param name the name without extension of the lua source file in the
+     * plugins directory
      * @throws invalid_argument if there is any error in loading the plugin
      */
-    Plugin(const std::string &filename);
-    
+    Plugin(const std::string &name);
+
     /**
      * Conditionally call the plugin's lua run method if the message matches any
      * of the plugin's commands or regular expressions
@@ -49,7 +50,7 @@ public:
      * @param update update to check
      */
     void run(const json &update);
-    
+
     std::string getDescription() { return description; }
     std::string getName() { return name; }
 

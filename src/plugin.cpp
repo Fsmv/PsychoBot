@@ -136,13 +136,13 @@ static bool checkVersion(std::string v) {
     return true;
 }
 
-Plugin::Plugin(const std::string &filename) : luaState(luaL_newstate(), lua_close), name(filename) {
+Plugin::Plugin(const std::string &name) : luaState(luaL_newstate(), lua_close), name(name) {
     lua_State *L = luaState.get();
     luaL_openlibs(L);
 
     std::vector<std::string> commandStrings, matchStrings;
 
-    if (luaL_loadfile(L, (pluginsDir + filename).c_str())) { //load file
+    if (luaL_loadfile(L, (pluginsDir + name + ".lua").c_str())) { //load file
         throw std::invalid_argument(lua_tostring(L, -1));
     } 
 
