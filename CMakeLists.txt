@@ -25,6 +25,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 find_package(Lua REQUIRED)
 find_package(Curlpp REQUIRED)
 find_package(MicroHttpd REQUIRED)
+find_package(Sqlite3 REQUIRED)
 add_definitions(${MICROHTTPD_DEFINITIONS})
 
 include_directories (
@@ -32,6 +33,7 @@ include_directories (
     ${LUA_INCLUDE_DIR}
     ${CURLPP_INCLUDE_DIRS}
     ${MICROHTTPD_INCLUDE_DIRS}
+    ${SQLITE3_INCLUDE_DIR}
 )
 
 add_executable(
@@ -48,6 +50,7 @@ endif(UNIX)
 target_link_libraries(${CMAKE_PROJECT_NAME} ${LUA_LIBRARIES})
 target_link_libraries(${CMAKE_PROJECT_NAME} ${CURLPP_LIBRARIES})
 target_link_libraries(${CMAKE_PROJECT_NAME} ${MICROHTTPD_LIBRARIES})
+target_link_libraries(${CMAKE_PROJECT_NAME} ${SQLITE3_LIBRARY})
 
 #install(TARGETS ${CMAKE_PREJECT_NAME} LIBRARY DESTINATION lib ARCHIVE DESTINATION lib)
 #install(FILES ${CMAKE_SOURCE_DIR}/include/Gif.h DESTINATION include)
