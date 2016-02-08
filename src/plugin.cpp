@@ -236,7 +236,10 @@ void Plugin::run(const json &update) {
 
     // check if we called a command this plugin uses
     for (auto command : commands) {
-        if (message.find("/" + command.first) == 0) {
+        if (message.find("/" + command.first) == 0 &&
+            (message.length() == command.first.length() + 1 ||
+             message[command.first.length() + 1] == ' ')) {
+
             currentRun.plugin = this;
             currentRun.update = update;
             currentRun.regex = false;
