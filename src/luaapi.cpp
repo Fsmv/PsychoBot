@@ -140,9 +140,9 @@ static int l_getSender(lua_State *L) {
     return 1;
 }
 
-static int l_config_get(lua_State *L) {
+static int l_getConfig(lua_State *L) {
     if (!lua_isstring(L, -1)) {
-        logger.error("Invalid argument to config_get");
+        logger.error("Invalid argument to getConfig");
         lua_pushnil(L);
         return 1;
     }
@@ -200,5 +200,5 @@ void injectAPIFunctions(lua_State *L) {
     LUA_INJECT(send);
     LUA_INJECT(reply);
     LUA_INJECT(getSender);
-    LUA_INJECT(config_get);
+    LUA_INJECT(getConfig);
 }
