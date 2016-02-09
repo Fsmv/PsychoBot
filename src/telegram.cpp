@@ -37,8 +37,8 @@ static std::string callMethod(std::string method,
         curlpp::Cleanup cleanup;
         curlpp::Easy request;
 
-        request.setOpt<Url>(Config::get<std::string>("api_url")
-                            + Config::get<std::string>("token")
+        request.setOpt<Url>(Config::global.get<std::string>("api_url")
+                            + Config::global.get<std::string>("token")
                             + "/" + method);
 
         if (arguments.size() != 0 || files.size() != 0) {

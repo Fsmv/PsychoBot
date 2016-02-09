@@ -22,46 +22,49 @@
 #include <array>
 #include <string>
 
+static const std::array<std::string, 3> REQ_CONF_OPTS = { "token", "api_url", "webhook_url" };
 static Logger logger("config");
-const std::string Config::PB_VERSION = "0.1.2";
-const std::array<std::string, 3> Config::REQ_CONF_OPTS = { "token", "api_url", "webhook_url" };
-const Config global("config.json");
 
-Config::Config(const std::string &filename) {
+const std::string Config::PB_VERSION = "0.1.2";
+const Config Config::global("config.json");
+
+/**
+ * Initialize the global config file
+ */
+Config::Config(const std::string &filename) : filename(filename) {
     Config *loaded = loadConfig(filename);
     if (!loaded) {
         throw new std::runtime_error("Could not load global config file");
     }
 
     this->config = loaded->config;
-    this->filename = loaded->filename;
 
-    if (jConfig.find("log_file") != Config::config.end()) {
-        Logger::setLogFile(Config::config["log_file"].get<std::string>().c_str());
+    if (config.find("log_file") != config.end()) {
+        Logger::setLogFile(config["log_file"].get<std::string>().c_str());
     } else {
         Logger::setLogFile("output.log");
     }
 
-    if (Config::config.find("log_level") != Config::config.end()) {
+    if (config.find("log_level") != config.end()) {
         Logger::setGlobalLogLevel(
             Logger::parseLogLevel(
-                Config::config["log_level"].get<std::string>().c_str()));
+                config["log_level"].get<std::string>().c_str()));
     }
 
     for (auto option : REQ_CONF_OPTS) {
-        if (Config::config.find(option) == Config::config.end()) {
-            logger.error("Missing required config option: " + option);
-            return nullptr;
+        if (config.find(option) == config.end()) {
+            logger.error("Global config missing required option: " + option);
+            throw new std::runtime_error("Global config missing required option: " + option);
         }
     }
 }
 
-Config Config::loadConfig(const std::string &filename) {
+Config *Config::loadConfig(const std::string &filename) {
     std::ifstream f(filename);
     json jConfig;
 
     if(!f.good()) {
-        logger.error("Could not open config file: " + filename);
+        logger.debug("Could not open config file: " + filename);
         return nullptr;
     }
 
@@ -76,8 +79,4 @@ Config Config::loadConfig(const std::string &filename) {
     }
 
     return new Config(jConfig, filename);
-}
-
-bool Config::contains(const std::string &option) {
-    return config.find(option) != Config::config.end();
 }

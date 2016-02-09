@@ -137,6 +137,8 @@ static bool checkVersion(std::string v) {
 }
 
 Plugin::Plugin(const std::string &name) : luaState(luaL_newstate(), lua_close), name(name) {
+    config = Config::loadConfig(pluginsDir + name + ".json");
+
     lua_State *L = luaState.get();
     luaL_openlibs(L);
 
@@ -185,12 +187,12 @@ Plugin::Plugin(const std::string &name) : luaState(luaL_newstate(), lua_close), 
     if (!getfield_array(L, "matches", &matchStrings)) {
         throw std::invalid_argument("Failed to read matches field");
     }
-    for (auto match : matchStrings) { // compiled the regexes
+    for (auto match : matchStrings) { // compile the regexes
         try {
             auto reg = std::regex(match);
             matches[match] = reg;
         } catch (std::regex_error &e) {
-            logger.warn("Failed to load regex " + match + " for plugin " + filename);
+            logger.warn("Failed to load regex " + match + " for plugin " + name);
             logger.warn(e.what());
         }
     }
@@ -210,7 +212,7 @@ Plugin::Plugin(const std::string &name) : luaState(luaL_newstate(), lua_close), 
         throw std::invalid_argument("Run function not defined");
     }
 
-    logger.info("Loaded plugin " + filename);
+    logger.info("Loaded plugin " + name);
 }
 
 static void callRun(lua_State *L, const std::string &message, const std::string &match, PluginRunState *state) {
@@ -262,12 +264,12 @@ void Plugin::run(const json &update) {
 }
 
 bool loadPlugins(std::vector<Plugin> *plugins) {
-    if (!Config::contains("plugins")) {
+    if (!Config::global.contains("plugins")) {
         logger.info("No plugins specified in config");
         return false;
     }
 
-    std::vector<std::string> pluginsToLoad = Config::get<std::vector<std::string>>("plugins");
+    std::vector<std::string> pluginsToLoad = Config::global.get<std::vector<std::string>>("plugins");
     for (auto plugin : pluginsToLoad) {
         try {
             plugins->emplace_back(plugin);

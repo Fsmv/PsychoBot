@@ -30,6 +30,8 @@ extern "C" {
 #include "json.hpp"
 using json = nlohmann::json;
 
+#include "config.h"
+
 struct lua_State;
 
 class Plugin {
@@ -54,8 +56,10 @@ public:
     std::string getDescription() { return description; }
     std::string getName() { return name; }
 
+    Config *config;
+
 private:
-    std::unique_ptr<lua_State, decltype(&lua_close)>luaState;
+    std::unique_ptr<lua_State, decltype(&lua_close)> luaState;
     std::map<std::string, std::string> commands;
     std::map<std::string, std::regex> matches;
     std::string description;
@@ -63,10 +67,15 @@ private:
     bool commandOnly;
 };
 
+// State information for a single call of run
 struct PluginRunState {
+    // The plugin being run
     Plugin *plugin;
+    // the update message that trigger the run call
     json update;
+    // if the run call was triggered with a regex match
     bool regex;
+    // the string and regex that triggered the run if regex is true
     std::pair<std::string, std::regex> match;
 };
 

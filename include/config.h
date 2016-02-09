@@ -26,7 +26,10 @@ using json = nlohmann::json;
 class Config {
 public:
     static Config *loadConfig(const std::string &filename);
-    bool contains(const std::string &option) const;
+
+    bool contains(const std::string &option) const {
+        return config.find(option) != config.end();
+    }
 
     template<typename T>
     T get(const std::string &option) const {
@@ -38,14 +41,15 @@ public:
         if (contains(option)) {
             return config[option].get<T>();
         } else {
-            set(option, default_value);
             return default_value;
         }
     }
 
-    void set(const std::string &option, const T &value) {
+    void set(const std::string &option, const json::value_type &value) {
         config[option] = value;
     }
+
+    json config;
 
     static const std::string PB_VERSION;
     static const Config global;
@@ -55,9 +59,7 @@ private:
         : config(config), filename(filename) {}
     Config(const std::string &filename);
 
-    json config;
     const std::string &filename;
-    static const std::array<std::string, 3> REQ_CONF_OPTS;
 };
 
 #endif
