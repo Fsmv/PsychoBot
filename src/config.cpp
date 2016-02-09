@@ -31,7 +31,7 @@ const Config Config::global("config.json");
 /**
  * Initialize the global config file
  */
-Config::Config(const std::string &filename) : filename(filename) {
+Config::Config(const std::string &filename) : filename(filename), changed(false) {
     Config *loaded = loadConfig(filename);
     if (!loaded) {
         throw new std::runtime_error("Could not load global config file");
@@ -83,5 +83,10 @@ Config *Config::loadConfig(const std::string &filename) {
 
 void Config::save() {
     std::ofstream f(filename);
-    f << std::setw(4) << config;
+    if (f.good()) {
+        f << std::setw(4) << config;
+        changed = false;
+    } else {
+        logger.error("Could not write config file: " + filename);
+    }
 }

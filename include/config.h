@@ -26,6 +26,7 @@ using json = nlohmann::json;
 class Config {
 public:
     static Config *loadConfig(const std::string &filename);
+    ~Config() { if (changed) { save(); } }
 
     bool contains(const std::string &option) const {
         return config.find(option) != config.end();
@@ -50,6 +51,7 @@ public:
     }
 
     void save();
+    void setChanged() { changed = true; }
 
     json config;
 
@@ -58,10 +60,11 @@ public:
 
 private:
     Config(json &config, const std::string &filename)
-        : config(config), filename(filename) {}
+        : config(config), filename(filename), changed(false) {}
     Config(const std::string &filename);
 
     std::string filename;
+    bool changed;
 };
 
 #endif

@@ -183,7 +183,7 @@ static int l_setConfig(lua_State *L) {
         conf[confopt] = readValue(L, -1);
     }
 
-    currentRun->plugin->config->save();
+    currentRun->plugin->config->setChanged();
     return 0;
 }
 
