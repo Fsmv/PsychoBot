@@ -31,6 +31,8 @@ extern "C" {
 static inline void pushVal(lua_State *L, json::const_iterator &elm) {
     switch (elm->type()) {
         case json::value_t::null:
+        case json::value_t::discarded:
+        default:
             lua_pushnil(L);
             break;
         case json::value_t::object:
@@ -70,7 +72,8 @@ json::value_type readValue(lua_State *L, int stackIdx) {
         case LUA_TSTRING:
             return std::string(lua_tostring(L, stackIdx));
         default:
-            luaL_error(L, "Invalid type");
+            luaL_error(L, "Invalid type"); //long jumps, acts as return
+            return 0; // not reachable
     }
 }
 
@@ -81,7 +84,7 @@ json readLuaTable(lua_State *L, int stackIdx) {
     lua_pushnil(L);
     while(lua_next(L, -2) != 0) {
         lua_pushvalue(L, -2);
-        const char *key = lua_tostring(L, -1);
+        std::string key = std::string(lua_tostring(L, -1));
         if (lua_istable(L, -2)) {
             result[key] = readLuaTable(L, -2);
         } else {
