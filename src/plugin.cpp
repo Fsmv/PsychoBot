@@ -136,8 +136,11 @@ static bool checkVersion(std::string v) {
     return true;
 }
 
-Plugin::Plugin(const std::string &name) : luaState(luaL_newstate(), lua_close), name(name) {
-    config = Config::loadConfig(pluginsDir + name + ".json");
+Plugin::Plugin(const std::string &name) : config(nullptr), luaState(luaL_newstate(), lua_close), name(name) {
+    config.reset(Config::loadConfig(pluginsDir + name + ".json"));
+    if (!config) {
+        throw std::invalid_argument("malformed config file");
+    }
 
     lua_State *L = luaState.get();
     luaL_openlibs(L);

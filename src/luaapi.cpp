@@ -61,7 +61,6 @@ void pushJsonTable(lua_State *L, const json &j) {
     }
 }
 
-/* NOT TESTED
 json::value_type readValue(lua_State *L, int stackIdx) {
     switch(lua_type(L, stackIdx)) {
         case LUA_TBOOLEAN:
@@ -71,9 +70,8 @@ json::value_type readValue(lua_State *L, int stackIdx) {
         case LUA_TSTRING:
             return std::string(lua_tostring(L, stackIdx));
         default:
-            break;
+            luaL_error(L, "Invalid type");
     }
-    throw std::runtime_error("invalid type read in readValue");
 }
 
 json readLuaTable(lua_State *L, int stackIdx) {
@@ -93,7 +91,9 @@ json readLuaTable(lua_State *L, int stackIdx) {
         lua_pop(L, 2);
     }
     lua_pop(L, 1);
-}*/
+
+    return result;
+}
 
 static const PluginRunState *getRunState(lua_State *L) {
     lua_getglobal(L, "TG_RUN_STATE");
@@ -164,8 +164,7 @@ static int l_getConfig(lua_State *L) {
     return 1;
 }
 
-/* NOT TESTED
-static int l_config_set(lua_State *L) {
+static int l_setConfig(lua_State *L) {
     if (!lua_isstring(L, -2) ||
          lua_isuserdata(L, -1) ||
          lua_isthread(L, -1) ||
@@ -175,7 +174,8 @@ static int l_config_set(lua_State *L) {
         return 1;
     }
     std::string confopt = std::string(lua_tostring(L, -2));
-    const json &conf = getRunState(L)->plugin->config.config;
+    const PluginRunState *currentRun = getRunState(L);
+    json &conf = currentRun->plugin->config->config;
 
     if (lua_istable(L, -1)) {
         conf[confopt] = readLuaTable(L, -1);
@@ -183,14 +183,9 @@ static int l_config_set(lua_State *L) {
         conf[confopt] = readValue(L, -1);
     }
 
-    auto elm = conf.find(confopt);
-    if (elm != conf.end()) {
-        pushVal(L, elm);
-    } else {
-        lua_pushnil(L);
-    }
+    currentRun->plugin->config->save();
     return 0;
-}*/
+}
 
 #define LUA_INJECT(func) \
     lua_pushcfunction(L, l_##func); \
@@ -201,4 +196,5 @@ void injectAPIFunctions(lua_State *L) {
     LUA_INJECT(reply);
     LUA_INJECT(getSender);
     LUA_INJECT(getConfig);
+    LUA_INJECT(setConfig);
 }

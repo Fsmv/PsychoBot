@@ -49,6 +49,8 @@ public:
         config[option] = value;
     }
 
+    void save();
+
     json config;
 
     static const std::string PB_VERSION;
@@ -59,7 +61,7 @@ private:
         : config(config), filename(filename) {}
     Config(const std::string &filename);
 
-    const std::string &filename;
+    std::string filename;
 };
 
 #endif

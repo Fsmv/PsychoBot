@@ -56,7 +56,7 @@ public:
     std::string getDescription() { return description; }
     std::string getName() { return name; }
 
-    Config *config;
+    std::unique_ptr<Config> config;
 
 private:
     std::unique_ptr<lua_State, decltype(&lua_close)> luaState;

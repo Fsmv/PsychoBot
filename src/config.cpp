@@ -65,7 +65,7 @@ Config *Config::loadConfig(const std::string &filename) {
 
     if(!f.good()) {
         logger.debug("Could not open config file: " + filename);
-        return nullptr;
+        return new Config(jConfig, filename);
     }
 
     std::istream_iterator<char> it(f), eof;
@@ -79,4 +79,9 @@ Config *Config::loadConfig(const std::string &filename) {
     }
 
     return new Config(jConfig, filename);
+}
+
+void Config::save() {
+    std::ofstream f(filename);
+    f << std::setw(4) << config;
 }
