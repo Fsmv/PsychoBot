@@ -25,7 +25,6 @@
 #include "config.h"
 #include "plugin.h"
 
-static const std::string CONFIG_FILE = "config.json";
 static bool running;
 static bool output;
 
@@ -75,10 +74,6 @@ static void runPlugins() {
 }
 
 int main(int argc, char **argv) {
-    if(!Config::loadConfig(CONFIG_FILE)) {
-        return 1;
-    }
-
     running = true;
     std::thread pluginsThread(runPlugins);
 
