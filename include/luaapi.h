@@ -35,12 +35,4 @@ struct Plugin;
  */
 void injectAPIFunctions(lua_State *L);
 
-/**
- * Pushes an entire json object to the top of the lua stack as a table
- * 
- * @param L the stack to push to
- * @praam j the json object to push
- */
-void pushJsonTable(lua_State *L, const json &j);
-
 #endif

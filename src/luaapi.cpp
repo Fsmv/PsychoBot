@@ -20,13 +20,16 @@
 #include "plugin.h"
 #include "logger.h"
 #include "config.h"
-static Logger logger("LuaAPI");
 
 extern "C" {
     #include "lua.h"
     #include "lualib.h"
     #include "lauxlib.h"
 }
+
+#include <cassert>
+
+static Logger logger("LuaAPI");
 
 static inline void pushVal(lua_State *L, json::const_iterator &elm) {
     switch (elm->type()) {
@@ -37,7 +40,8 @@ static inline void pushVal(lua_State *L, json::const_iterator &elm) {
             break;
         case json::value_t::object:
         case json::value_t::array:
-            pushJsonTable(L, *elm);
+            logger.error("Called internal function pushVal with invalid argument");
+            assert(0);
             break;
         case json::value_t::string:
             lua_pushstring(L, elm->get<std::string>().c_str());
@@ -52,18 +56,24 @@ static inline void pushVal(lua_State *L, json::const_iterator &elm) {
     }
 }
 
-void pushJsonTable(lua_State *L, const json &j) {
+static void pushJsonTable(lua_State *L, const json &j) {
     lua_newtable(L);
     int i = 0;
     //TODO: stack overflow if we get a giant json object
     for (auto elm = j.begin(); elm != j.end(); ++elm) {
         lua_pushstring(L, elm.key().c_str());
-        pushVal(L, elm);
+        if (elm->type() == json::value_t::array ||
+            elm->type() == json::value_t::object) {
+
+            pushJsonTable(L, *elm);
+        } else {
+            pushVal(L, elm);
+        }
         lua_settable(L, -3);
     }
 }
 
-json::value_type readValue(lua_State *L, int stackIdx) {
+static json::value_type readValue(lua_State *L, int stackIdx) {
     switch(lua_type(L, stackIdx)) {
         case LUA_TBOOLEAN:
             return lua_toboolean(L, stackIdx);
@@ -77,7 +87,7 @@ json::value_type readValue(lua_State *L, int stackIdx) {
     }
 }
 
-json readLuaTable(lua_State *L, int stackIdx) {
+static json readLuaTable(lua_State *L, int stackIdx) {
     json result;
 
     lua_pushvalue(L, stackIdx);
