@@ -76,7 +76,7 @@ static void pushJsonTable(lua_State *L, const json &j) {
 static json::value_type readValue(lua_State *L, int stackIdx) {
     switch(lua_type(L, stackIdx)) {
         case LUA_TBOOLEAN:
-            return lua_toboolean(L, stackIdx);
+            return static_cast<bool>(lua_toboolean(L, stackIdx));
         case LUA_TNUMBER:
             return lua_tonumber(L, stackIdx);
         case LUA_TSTRING:
@@ -120,27 +120,16 @@ static const PluginRunState *getRunState(lua_State *L) {
 }
 
 static int l_send(lua_State *L) {
-    if (!lua_isstring(L, -1)) {
-        logger.error("Invalid argument to send");
-        return 0;
-    }
-
+    std::string message = std::string(luaL_checkstring(L, 1));
     const PluginRunState *currentRun = getRunState(L);
-
-    std::string message = std::string(lua_tostring(L, -1));
     tg_send(message,
             currentRun->update["message"]["chat"]["id"].get<int>());
     return 0;
 }
 
 static int l_reply(lua_State *L) {
-    if (!lua_isstring(L, -1)) {
-        logger.error("Invalid argument to reply");
-        return 0;
-    }
+    std::string message = std::string(luaL_checkstring(L, 1));
     const PluginRunState *currentRun = getRunState(L);
-    
-    std::string message = std::string(lua_tostring(L, -1));
     tg_reply(message,
              currentRun->update["message"]["chat"]["id"].get<int>(),
              currentRun->update["message"]["message_id"].get<int>());
@@ -154,15 +143,12 @@ static int l_getSender(lua_State *L) {
 }
 
 static int l_getConfig(lua_State *L) {
-    if (!lua_isstring(L, -1)) {
-        logger.error("Invalid argument to getConfig");
-        lua_pushnil(L);
-        return 1;
-    }
-    std::string confopt = std::string(lua_tostring(L, -1));
     const PluginRunState *currentRun = getRunState(L);
+    std::string confopt = std::string(luaL_checkstring(L, 1));
 
     if (currentRun->plugin->config == nullptr) {
+        logger.warn("Missing config for plugin: " +
+                    currentRun->plugin->getName());
         lua_pushnil(L);
         return 1;
     }
@@ -178,22 +164,18 @@ static int l_getConfig(lua_State *L) {
 }
 
 static int l_setConfig(lua_State *L) {
-    if (!lua_isstring(L, -2) ||
-         lua_isuserdata(L, -1) ||
-         lua_isthread(L, -1) ||
-         lua_isfunction(L, -1)){
-        logger.error("Invalid argument to config_set");
-        lua_pushnil(L);
-        return 1;
+    if (lua_isuserdata(L, 2) || lua_isthread(L, 2) || lua_isfunction(L, 2)) {
+        luaL_argerror(L, 2, "Cannot set config to thread function, or userdata");
+        return 0;
     }
-    std::string confopt = std::string(lua_tostring(L, -2));
+    std::string confopt = std::string(luaL_checkstring(L, 1));
     const PluginRunState *currentRun = getRunState(L);
     json &conf = currentRun->plugin->config->config;
 
-    if (lua_istable(L, -1)) {
-        conf[confopt] = readLuaTable(L, -1);
+    if (lua_istable(L, 2)) {
+        conf[confopt] = readLuaTable(L, 2);
     } else {
-        conf[confopt] = readValue(L, -1);
+        conf[confopt] = readValue(L, 2);
     }
 
     currentRun->plugin->config->setChanged();
