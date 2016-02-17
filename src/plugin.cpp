@@ -39,11 +39,11 @@ static const std::string pluginsDir = "plugins/";
 static bool getfield(lua_State *L, const char *key, const char **value) {
     lua_getfield(L, -1, key);
     if (lua_isnil(L, -1)) {
-        logger.error("Missing key " + std::string(key));
+        logger.debug("Missing key " + std::string(key));
         return false;
     }
     if (!lua_isstring(L, -1)) {
-        logger.error("Invalid type for key " + std::string(key) + " expected string");
+        logger.debug("Invalid type for key " + std::string(key) + " expected string");
         return false;
     }
     *value = lua_tostring(L, -1);
@@ -54,11 +54,11 @@ static bool getfield(lua_State *L, const char *key, const char **value) {
 static bool getfield(lua_State *L, const char *key, bool *value) {
     lua_getfield(L, -1, key);
     if (lua_isnil(L, -1)) {
-        logger.error("Missing key " + std::string(key));
+        logger.debug("Missing key " + std::string(key));
         return false;
     }
     if (!lua_isboolean(L, -1)) {
-        logger.error("Invalid type for key " + std::string(key) + " expected boolean");
+        logger.debug("Invalid type for key " + std::string(key) + " expected boolean");
         return false;
     }
     *value = lua_toboolean(L, -1);
@@ -69,7 +69,7 @@ static bool getfield(lua_State *L, const char *key, bool *value) {
 static bool getfield_array(lua_State *L, const char *key, std::vector<std::string> *arr) {
     lua_getfield(L, -1, key);
     if (!lua_istable(L, -1)) {
-        logger.error("Invalid type for key " + std::string(key) + " expected array");
+        logger.debug("Invalid type for key " + std::string(key) + " expected array");
         return false;
     }
 
@@ -77,7 +77,7 @@ static bool getfield_array(lua_State *L, const char *key, std::vector<std::strin
     for (int i = 1; i <= n; ++i) {
         lua_rawgeti(L, -1, i);
         if (!lua_isstring(L, -1)) {
-            logger.error("Invalid type in string array index=" + std::to_string(i));
+            logger.debug("Invalid type in string array index=" + std::to_string(i));
             return false;
         }
         const char *v;
@@ -95,14 +95,14 @@ static bool getusages(lua_State *L, const std::vector<std::string> &commands,
     // We can hardcode since this method is specific to usages
     lua_getfield(L, -1, "usage");
     if (!lua_istable(L, -1)) {
-        logger.error("Invalid type for key usage expected array");
+        logger.error("Usage list must be an array");
         return false;
     }
 
     for (std::string command : commands) {
         const char *usage;
         if(!getfield(L, command.c_str(), &usage)) {
-            logger.error("in usages");
+            logger.error("Did not define usage for command: " + command);
             return false;
         }
         (*commandUsages)[command] = std::string(usage);
@@ -115,6 +115,7 @@ static bool getusages(lua_State *L, const std::vector<std::string> &commands,
 static bool checkVersion(std::string v) {
     static const std::regex versionCheck("\\d+\\.\\d+\\.\\d+");
     if (!std::regex_match(v, versionCheck)) {
+        logger.debug("Version string did not match the correct format");
         return false;
     }
 
@@ -123,6 +124,7 @@ static bool checkVersion(std::string v) {
     int v_maj, v_min, v_patch;
     std::stringstream(Config::PB_VERSION) >> v_maj >> v_min >> v_patch;
 
+    // TODO: better/more useful version checking
     if (bot_maj != v_maj) {
         return bot_maj < v_maj;
     }
@@ -143,15 +145,17 @@ Plugin::Plugin(const std::string &name) : config(nullptr), luaState(luaL_newstat
     }
 
     lua_State *L = luaState.get();
-    luaL_openlibs(L);
+    if (L == nullptr) {
+        throw std::invalid_argument("Could not create lua state");
+    }
 
-    std::vector<std::string> commandStrings, matchStrings;
+    luaL_openlibs(L); // load the standard lua libraries
 
     if (luaL_loadfile(L, (pluginsDir + name + ".lua").c_str())) { //load file
         throw std::invalid_argument(lua_tostring(L, -1));
     } 
 
-    if (lua_pcall(L, 0, 0, 0)) { //primer call
+    if (lua_pcall(L, 0, 0, 0)) { // evaluate the globals in the file
         throw std::invalid_argument(lua_tostring(L, -1));
     }
 
@@ -169,48 +173,64 @@ Plugin::Plugin(const std::string &name) : config(nullptr), luaState(luaL_newstat
         throw std::invalid_argument("getInfo did not return a table");
     }
 
-    const char *v;
-    if (!getfield(L, "version", &v)) {
-        throw std::invalid_argument("Did not define version");
-    }
-    if (!checkVersion(std::string(v))) {
-        throw std::invalid_argument("Plugin version "
-            + std::string(v) + " not compatible with bot version: " + Config::PB_VERSION);
-    }
-
-    if (!getfield(L, "description", &v)) {
-        throw std::invalid_argument("Did not define description");
-    }
-    description = std::string(v);
-
-    if (!getfield(L, "commandOnly", &commandOnly)) {
-        throw std::invalid_argument("Did not define commandOnly");
-    }
-
-    if (!getfield_array(L, "matches", &matchStrings)) {
-        throw std::invalid_argument("Failed to read matches field");
-    }
-    for (auto match : matchStrings) { // compile the regexes
-        try {
-            auto reg = std::regex(match);
-            matches[match] = reg;
-        } catch (std::regex_error &e) {
-            logger.warn("Failed to load regex " + match + " for plugin " + name);
-            logger.warn(e.what());
+    { // check plugin version
+        const char *v;
+        if (!getfield(L, "version", &v)) {
+            throw std::invalid_argument("Did not define version");
+        }
+        if (!checkVersion(std::string(v))) {
+            throw std::invalid_argument("Plugin version "
+                + std::string(v) + " not compatible with bot version: " + Config::PB_VERSION);
         }
     }
 
-    if (!getfield_array(L, "commands", &commandStrings)) {
-        throw std::invalid_argument("Failed to read commands field");
+    { // get plugin description
+        const char *v;
+        if (!getfield(L, "description", &v)) {
+            throw std::invalid_argument("Did not define description");
+        }
+        description = std::string(v);
     }
 
-    if (!getusages(L, commandStrings, &commands)) {
-        throw std::invalid_argument("Failed to read usage strings");
+    { // load the commandOnly field
+        if (!getfield(L, "commandOnly", &this->commandOnly)) {
+            commandOnly = false;
+        }
+    }
+
+    { // load the regular expressions
+        std::vector<std::string> matchStrings;
+        if (getfield_array(L, "matches", &matchStrings)) {
+            for (auto match : matchStrings) { // compile the regexes
+                try {
+                    auto reg = std::regex(match);
+                    matches[match] = reg;
+                } catch (std::regex_error &e) {
+                    logger.error(e.what());
+                    throw std::invalid_argument("Failed to load regex " + match + " for plugin " + name);
+                }
+            }
+        }
+    }
+
+    { // load commands and usages
+        std::vector<std::string> commandStrings;
+        if (getfield_array(L, "commands", &commandStrings)) {
+            if (!getusages(L, commandStrings, &commands)) {
+                throw std::invalid_argument("Failed to read usage strings");
+            }
+        }
+    }
+
+    // check if plugin has a way to be triggered
+    if ((commandOnly && commands.size() == 0) ||
+        (commands.size() == 0 && matches.size() == 0)) {
+        throw std::invalid_argument("Plugin will never be run");
     }
 
     injectAPIFunctions(L);
 
-    lua_getglobal(L, "run"); //find getInfo
+    lua_getglobal(L, "run"); // find the run function
     if (!lua_isfunction(L, -1)) {
         throw std::invalid_argument("Run function not defined");
     }
