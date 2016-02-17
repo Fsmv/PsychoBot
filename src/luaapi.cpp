@@ -59,7 +59,7 @@ static inline void pushVal(lua_State *L, json::const_iterator &elm) {
 static void pushJsonTable(lua_State *L, const json &j) {
     lua_newtable(L);
     int i = 0;
-    //TODO: stack overflow if we get a giant json object
+    luaL_checkstack(L, j.size(), "Could not fit table on stack");
     for (auto elm = j.begin(); elm != j.end(); ++elm) {
         lua_pushstring(L, elm.key().c_str());
         if (elm->type() == json::value_t::array ||
@@ -89,21 +89,29 @@ static json::value_type readValue(lua_State *L, int stackIdx) {
 
 static json readLuaTable(lua_State *L, int stackIdx) {
     json result;
+    luaL_checkstack(L, 3, "Could not read table, out of stack space");
 
-    lua_pushvalue(L, stackIdx);
-    lua_pushnil(L);
-    while(lua_next(L, -2) != 0) {
-        lua_pushvalue(L, -2);
-        std::string key = std::string(lua_tostring(L, -1));
-        if (lua_istable(L, -2)) {
-            result[key] = readLuaTable(L, -2);
+    //stack: - 
+    lua_pushvalue(L, stackIdx); // copy the table to the top of the stack
+    // stack: table
+    lua_pushnil(L); // push start key for lua_next
+    // stack: nil, table
+    while(lua_next(L, -2) != 0) {  // pop key. if next exists, push next key then value
+        // stack: value, key, table
+        std::string key = std::string(lua_tostring(L, -2)); // read the key
+        if (lua_istable(L, -1)) { // is value another table?
+            result[key] = readLuaTable(L, -1);
         } else {
-            result[key] = readValue(L, -2);
+            result[key] = readValue(L, -1);
         }
 
-        lua_pop(L, 2);
+        // stack: value, key, table
+        lua_pop(L, 1);
+        // stack: key, table
     }
+    // stack: table
     lua_pop(L, 1);
+    // stack: -
 
     return result;
 }
