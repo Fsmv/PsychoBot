@@ -24,39 +24,40 @@
 
 static const std::array<std::string, 3> REQ_CONF_OPTS = { "token", "api_url", "webhook_url" };
 static Logger logger("config");
+static const std::string GLOBAL_FILE = "config.json";
 
 const std::string Config::PB_VERSION = "0.1.2";
-const Config Config::global("config.json");
+std::unique_ptr<Config> Config::m_global = nullptr;
+using json = nlohmann::json;
 
 /**
  * Initialize the global config file
  */
-Config::Config(const std::string &filename) : filename(filename), changed(false) {
-    Config *loaded = loadConfig(filename);
-    if (!loaded) {
-        throw new std::runtime_error("Could not load global config file");
+void Config::loadGlobalConfig() {
+    m_global.reset(loadConfig(GLOBAL_FILE));
+    if (!m_global) {
+        logger.error("Could not load global config file");
+        m_global.reset(nullptr);
     }
 
-    this->config = loaded->config;
+    Logger::setLogFile(m_global->get<std::string>("log_file", "output.log").c_str());
 
-    if (config.find("log_file") != config.end()) {
-        Logger::setLogFile(config["log_file"].get<std::string>().c_str());
-    } else {
-        Logger::setLogFile("output.log");
-    }
-
-    if (config.find("log_level") != config.end()) {
-        Logger::setGlobalLogLevel(
-            Logger::parseLogLevel(
-                config["log_level"].get<std::string>().c_str()));
+    auto idx = m_global->find("log_level");
+    if (idx != m_global->end()) {
+        Logger::setGlobalLogLevel(Logger::parseLogLevel(idx->get<std::string>().c_str()));
     }
 
     for (auto option : REQ_CONF_OPTS) {
-        if (config.find(option) == config.end()) {
+        idx = m_global->find("option");
+        if (idx != m_global->end()) {
             logger.error("Global config missing required option: " + option);
-            throw new std::runtime_error("Global config missing required option: " + option);
+            m_global.reset(nullptr);
         }
     }
+}
+
+Config::Config(const json &config, const std::string &filename) 
+    : json(config), filename(filename), changed(false) {
 }
 
 Config *Config::loadConfig(const std::string &filename) {
@@ -84,7 +85,7 @@ Config *Config::loadConfig(const std::string &filename) {
 void Config::save() {
     std::ofstream f(filename);
     if (f.good()) {
-        f << std::setw(4) << config;
+        f << std::setw(4) << static_cast<json>(*this);
         changed = false;
     } else {
         logger.error("Could not write config file: " + filename);

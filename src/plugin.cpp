@@ -287,12 +287,12 @@ void Plugin::run(const json &update) {
 }
 
 bool loadPlugins(std::vector<Plugin> *plugins) {
-    if (!Config::global.contains("plugins")) {
+    if (!Config::global()->contains("plugins")) {
         logger.info("No plugins specified in config");
         return false;
     }
 
-    std::vector<std::string> pluginsToLoad = Config::global.get<std::vector<std::string>>("plugins");
+    std::vector<std::string> pluginsToLoad = Config::global()->get<std::vector<std::string>>("plugins");
     for (auto plugin : pluginsToLoad) {
         try {
             plugins->emplace_back(plugin);

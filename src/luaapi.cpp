@@ -31,8 +31,8 @@ extern "C" {
 
 static Logger logger("LuaAPI");
 
-static inline void pushVal(lua_State *L, json::const_iterator &elm) {
-    switch (elm->type()) {
+static inline void pushVal(lua_State *L, json::const_reference elm) {
+    switch (elm.type()) {
         case json::value_t::null:
         case json::value_t::discarded:
         default:
@@ -44,14 +44,14 @@ static inline void pushVal(lua_State *L, json::const_iterator &elm) {
             assert(0);
             break;
         case json::value_t::string:
-            lua_pushstring(L, elm->get<std::string>().c_str());
+            lua_pushstring(L, elm.get<std::string>().c_str());
             break;
         case json::value_t::boolean:
-            lua_pushboolean(L, elm->get<bool>());
+            lua_pushboolean(L, elm.get<bool>());
             break;
         case json::value_t::number_integer:
         case json::value_t::number_float:
-            lua_pushnumber(L, elm->get<float>());
+            lua_pushnumber(L, elm.get<float>());
             break;
     }
 }
@@ -67,7 +67,7 @@ static void pushJsonTable(lua_State *L, const json &j) {
 
             pushJsonTable(L, *elm);
         } else {
-            pushVal(L, elm);
+            pushVal(L, *elm);
         }
         lua_settable(L, -3);
     }
@@ -161,10 +161,10 @@ static int l_getConfig(lua_State *L) {
         return 1;
     }
 
-    const json &conf = currentRun->plugin->config->config;
+    const auto &conf = *currentRun->plugin->config.get();
     auto elm = conf.find(confopt);
     if (elm != conf.end()) {
-        pushVal(L, elm);
+        pushVal(L, *elm);
     } else {
         lua_pushnil(L);
     }
@@ -178,7 +178,7 @@ static int l_setConfig(lua_State *L) {
     }
     std::string confopt = std::string(luaL_checkstring(L, 1));
     const PluginRunState *currentRun = getRunState(L);
-    json &conf = currentRun->plugin->config->config;
+    auto &conf = *currentRun->plugin->config.get();
 
     if (lua_istable(L, 2)) {
         conf[confopt] = readLuaTable(L, 2);

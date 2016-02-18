@@ -20,48 +20,50 @@
 
 #include <array>
 #include <string>
+#include <memory>
 #include "json.hpp"
-using json = nlohmann::json;
 
-class Config {
+class Config : public nlohmann::json {
 public:
     static Config *loadConfig(const std::string &filename);
-    ~Config() { if (changed) { save(); } }
+    virtual ~Config() { if (changed) { save(); } }
 
-    bool contains(const std::string &option) const {
-        return config.find(option) != config.end();
+    inline bool contains(const std::string &option) const {
+        return find(option) != end();
     }
 
     template<typename T>
     T get(const std::string &option) const {
-        return config[option].get<T>();
+        return (*this)[option].get<T>();
     }
 
     template<typename T>
     T get(const std::string &option, const T &default_value) const {
         if (contains(option)) {
-            return config[option].get<T>();
+            return (*this)[option].get<T>();
         } else {
             return default_value;
         }
     }
 
-    void set(const std::string &option, const json::value_type &value) {
-        config[option] = value;
+    inline void set(const std::string &option, nlohmann::json::const_reference value) {
+        (*this)[option] = value;
     }
 
     void save();
     void setChanged() { changed = true; }
 
-    json config;
+    static void loadGlobalConfig();
+    static const Config *global() { return m_global.get(); }
+
 
     static const std::string PB_VERSION;
-    static const Config global;
 
 private:
-    Config(json &config, const std::string &filename)
-        : config(config), filename(filename), changed(false) {}
+    Config(const nlohmann::json &config, const std::string &filename);
     Config(const std::string &filename);
+
+    static std::unique_ptr<Config> m_global;
 
     std::string filename;
     bool changed;

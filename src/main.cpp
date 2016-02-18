@@ -74,16 +74,21 @@ static void runPlugins() {
 }
 
 int main(int argc, char **argv) {
-    running = true;
-    std::thread pluginsThread(runPlugins);
-
-    if (!setWebhook(Config::global.get<std::string>("webhook_url"), 
-               Config::global.get<std::string>("webhook_self_signed_cert_file", ""))) {
+    Config::loadGlobalConfig();
+    if (!Config::global()) {
         return 1;
     }
 
-    if(startServer(Config::global.get<int>("port", 80), Config::global.get<std::string>("bind_address", "0.0.0.0").c_str())) {  
-    //if(startServer(atoi(getenv("PORT")), getenv("IP"))) {
+    running = true;
+    std::thread pluginsThread(runPlugins);
+
+    if (!setWebhook(Config::global()->get<std::string>("webhook_url"), 
+               Config::global()->get<std::string>("webhook_self_signed_cert_file", ""))) {
+        return 1;
+    }
+
+    if(startServer(Config::global()->get<int>("port", 80),
+                   Config::global()->get<std::string>("bind_address", "0.0.0.0").c_str())) {  
         return 1;
     }
 

@@ -25,6 +25,8 @@
 static Logger logger("tg api");
 
 #include "config.h"
+#include "json.hpp"
+using json = nlohmann::json;
 
 static std::string callMethod(std::string method,
         std::map<std::string, std::string> arguments,
@@ -37,8 +39,8 @@ static std::string callMethod(std::string method,
         curlpp::Cleanup cleanup;
         curlpp::Easy request;
 
-        request.setOpt<Url>(Config::global.get<std::string>("api_url")
-                            + Config::global.get<std::string>("token")
+        request.setOpt<Url>(Config::global()->get<std::string>("api_url")
+                            + Config::global()->get<std::string>("token")
                             + "/" + method);
 
         if (arguments.size() != 0 || files.size() != 0) {
@@ -88,7 +90,7 @@ bool setWebhook(std::string url, std::string certFile) {
     } else {
         logger.error(data["description"].get<std::string>());
     }
-    
+
     return result;
 }
 
@@ -108,9 +110,9 @@ void tg_reply(std::string message, int chat_id, int message_id) {
 std::string getMessageText(const json &update) {
     if (update.find("message") != update.end() &&
         update["message"].find("text") != update["message"].end()) {
-        
+
         return update["message"]["text"].get<std::string>();
     }
-    
+
     return "";
 }
