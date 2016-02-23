@@ -127,20 +127,39 @@ static const PluginRunState *getRunState(lua_State *L) {
     return nullptr;
 }
 
-static int l_send(lua_State *L) {
+static void l_sendMessage(lua_State *L, bool reply) {
     std::string message = std::string(luaL_checkstring(L, 1));
     const PluginRunState *currentRun = getRunState(L);
-    tg_send(message,
-            currentRun->update["message"]["chat"]["id"].get<int>());
+
+    bool markdown = true, disable_preview = false;
+    switch (lua_gettop(L)) { // read optional arguments; switch on number of args
+    default: // if more than 3 arguments
+    case 3:  // if 3 args
+        disable_preview = lua_toboolean(L, 3);
+    case 2:  // if 2 args
+        markdown = lua_toboolean(L, 2);
+    case 1:
+    case 0:
+        ;
+    }
+
+    int reply_message = -1;
+    if (reply) {
+        reply_message = currentRun->update["message"]["message_id"].get<int>();
+    }
+
+    tg_sendMessage(message,
+             currentRun->update["message"]["chat"]["id"].get<int>(),
+             reply_message, markdown, disable_preview);
+}
+
+static int l_send(lua_State *L) {
+    l_sendMessage(L, false);
     return 0;
 }
 
 static int l_reply(lua_State *L) {
-    std::string message = std::string(luaL_checkstring(L, 1));
-    const PluginRunState *currentRun = getRunState(L);
-    tg_reply(message,
-             currentRun->update["message"]["chat"]["id"].get<int>(),
-             currentRun->update["message"]["message_id"].get<int>());
+    l_sendMessage(L, true);
     return 0;
 }
 

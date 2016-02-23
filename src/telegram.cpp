@@ -94,17 +94,26 @@ bool setWebhook(const std::string &url, std::string certFile) {
     return result;
 }
 
-void tg_send(const std::string &message, int chat_id) {
-    callMethod("sendMessage", {{"text", message},
-                               {"chat_id", std::to_string(chat_id)}
-                              });
-}
+void tg_sendMessage(const std::string &message, int chat_id,
+                    int message_id, bool markdown,
+                    bool disable_link_preview) {
+    std::map<std::string, std::string> arguments = 
+        {{"text", message},
+         {"chat_id", std::to_string(chat_id)}};
 
-void tg_reply(const std::string &message, int chat_id, int message_id) {
-    callMethod("sendMessage", {{"text", message},
-                               {"chat_id", std::to_string(chat_id)},
-                               {"reply_to_message_id", std::to_string(message_id)}
-                              });
+    if (message_id != -1) {
+        arguments["reply_to_message_id"] = std::to_string(message_id);
+    }
+
+    if (markdown) {
+        arguments["parse_mode"] = "Markdown";
+    }
+
+    if (disable_link_preview) {
+        arguments["disable_web_page_preview"] = "true";
+    }
+
+    callMethod("sendMessage", arguments);
 }
 
 std::string getMessageText(const json &update) {
