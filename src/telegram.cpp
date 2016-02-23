@@ -40,7 +40,7 @@ static std::string callMethod(const std::string &method,
         curlpp::Easy request;
 
         request.setOpt<Url>(Config::global()->get<std::string>("api_url")
-                            + Config::global()->get<std::string>("token")
+                            + "bot" + Config::global()->get<std::string>("token")
                             + "/" + method);
 
         if (arguments.size() != 0 || files.size() != 0) {
@@ -71,6 +71,50 @@ static std::string callMethod(const std::string &method,
     }
 
     return result.str();
+}
+
+bool tg_downloadFile(const std::string &file_id, const std::string &directory) {
+    // Get the file path to download
+    json response = json::parse(callMethod("getFile", {{"file_id", file_id}}));
+    auto path_it = response.find("file_path");
+    if (path_it == response.end()) {
+        logger.error("Telegram did not provide a download url");
+        return false;
+    }
+    std::string path = *path_it;
+
+    // get the file stream to write to
+    std::ofstream file(directory + file_id);
+    if (!file.good()) {
+        logger.error("Could not write downloaded file. ID: " + file_id);
+        return false;
+    }
+
+    // download the file
+    using namespace curlpp::options;
+    try {
+        curlpp::Cleanup cleanup;
+        curlpp::Easy request;
+
+        request.setOpt<Url>(Config::global()->get<std::string>("api_url")
+                            + "file/bot"
+                            + Config::global()->get<std::string>("token")
+                            + "/" + path);
+
+        request.setOpt<WriteStream>(&file);
+        request.perform();
+    }
+
+    catch(curlpp::RuntimeError &e) {
+        logger.error("Failed to download file: " + std::string(e.what()));
+        return false;
+    }
+    catch(curlpp::LogicError &e) {
+        logger.error("Failed to download file: " + std::string(e.what()));
+        return false;
+    }
+
+    return true;
 }
 
 bool setWebhook(const std::string &url, std::string certFile) {
