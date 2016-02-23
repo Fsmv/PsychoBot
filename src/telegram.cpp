@@ -28,9 +28,9 @@ static Logger logger("tg api");
 #include "json.hpp"
 using json = nlohmann::json;
 
-static std::string callMethod(std::string method,
-        std::map<std::string, std::string> arguments,
-        std::map<std::string, std::string> files = {}) {
+static std::string callMethod(const std::string &method,
+        const std::map<std::string, std::string> &arguments,
+        const std::map<std::string, std::string> &files = {}) {
 
     using namespace curlpp::options;
     std::stringstream result;
@@ -73,7 +73,7 @@ static std::string callMethod(std::string method,
     return result.str();
 }
 
-bool setWebhook(std::string url, std::string certFile) {
+bool setWebhook(const std::string &url, std::string certFile) {
     json data;
     if (certFile == "") {
         data = json::parse(callMethod("setWebhook", {{"url", url}}));
@@ -94,13 +94,13 @@ bool setWebhook(std::string url, std::string certFile) {
     return result;
 }
 
-void tg_send(std::string message, int chat_id) {
+void tg_send(const std::string &message, int chat_id) {
     callMethod("sendMessage", {{"text", message},
                                {"chat_id", std::to_string(chat_id)}
                               });
 }
 
-void tg_reply(std::string message, int chat_id, int message_id) {
+void tg_reply(const std::string &message, int chat_id, int message_id) {
     callMethod("sendMessage", {{"text", message},
                                {"chat_id", std::to_string(chat_id)},
                                {"reply_to_message_id", std::to_string(message_id)}
