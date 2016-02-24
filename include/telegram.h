@@ -35,7 +35,7 @@ void tg_sendMessage(const std::string &message, int chat_id,
                     int message_id = -1, bool markdown = true,
                     bool disable_link_preview = false);
 
-bool tg_downloadFile(const std::string &file_id, const std::string &directory);
+bool tg_downloadFile(const std::string &file_id, const std::string &filename);
 
 /**
  * Returns the message text from a given Update object (in the telegram api)

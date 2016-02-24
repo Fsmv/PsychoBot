@@ -28,6 +28,8 @@ static Logger logger("tg api");
 #include "json.hpp"
 using json = nlohmann::json;
 
+#include <fstream>
+
 static std::string callMethod(const std::string &method,
         const std::map<std::string, std::string> &arguments,
         const std::map<std::string, std::string> &files = {}) {
@@ -73,18 +75,20 @@ static std::string callMethod(const std::string &method,
     return result.str();
 }
 
-bool tg_downloadFile(const std::string &file_id, const std::string &directory) {
+bool tg_downloadFile(const std::string &file_id, const std::string &filename) {
     // Get the file path to download
     json response = json::parse(callMethod("getFile", {{"file_id", file_id}}));
+    response = response["result"];
     auto path_it = response.find("file_path");
     if (path_it == response.end()) {
+        std::cout << response << std::endl;
         logger.error("Telegram did not provide a download url");
         return false;
     }
     std::string path = *path_it;
 
     // get the file stream to write to
-    std::ofstream file(directory + file_id);
+    std::ofstream file(filename);
     if (!file.good()) {
         logger.error("Could not write downloaded file. ID: " + file_id);
         return false;

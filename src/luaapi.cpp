@@ -28,6 +28,7 @@ extern "C" {
 }
 
 #include <cassert>
+#include <algorithm>
 
 static Logger logger("LuaAPI");
 
@@ -209,6 +210,83 @@ static int l_setConfig(lua_State *L) {
     return 0;
 }
 
+static std::string getMsgFile(const json &message, std::string *file_id) {
+    auto contains = [message](const std::string &s) {
+        return message.find(s) != message.end();
+    };
+
+    if (contains("audio")) {
+        if (file_id) {
+            *file_id = message["audio"]["file_id"].get<std::string>();
+        }
+        return "AUDIO";
+    } else if (contains("document")) {
+        if (file_id) {
+            *file_id = message["document"]["file_id"].get<std::string>();
+        }
+        return "FILE";
+    } else if (contains("photo")) {
+        if (file_id) {
+            auto photo = std::max_element(message["photo"].begin(),
+                                          message["photo"].end(),
+                [](const json &lhs, const json &rhs) {
+                    return lhs["width"].get<int>() * lhs["height"].get<int>() <
+                           rhs["width"].get<int>() * rhs["height"].get<int>();
+                });
+
+            *file_id = (*photo)["file_id"].get<std::string>();
+        }
+        return "PHOTO";
+    } else if (contains("sticker")) {
+        if (file_id) {
+            *file_id = message["sticker"]["file_id"].get<std::string>();
+        }
+        return "STICKER";
+    } else if (contains("video")) {
+        if (file_id) {
+            *file_id = message["video"]["file_id"].get<std::string>();
+        }
+        return "VIDEO";
+    } else if (contains("contact")) {
+        return "CONTACT";
+    } else if (contains("location")) {
+        return "LOCATION";
+    } else if (contains("text")) {
+        return "TEXT";
+    } else {
+        return "UNKNOWN";
+    }
+}
+
+static int l_messageType(lua_State *L) {
+    const PluginRunState *currentRun = getRunState(L);
+    const auto &msg = currentRun->update["message"];
+    lua_pushstring(L, getMsgFile(msg, nullptr).c_str());
+    return 1;
+}
+
+static int l_downloadFile(lua_State *L) {
+    const PluginRunState *currentRun = getRunState(L);
+    const auto &msg = currentRun->update["message"];
+    std::string file_id = "";
+    std::string type = getMsgFile(msg, &file_id);
+
+    bool success = false;
+    std::string filename = currentRun->plugin->getPath() + file_id;
+    if (file_id != "") {
+        success = tg_downloadFile(file_id, filename);
+    }
+
+    if (success) {
+        lua_pushstring(L, filename.c_str());
+    } else {
+        lua_pushnil(L);
+    }
+
+    lua_pushstring(L, type.c_str());
+    return 2;
+}
+
 #define LUA_INJECT(func) \
     lua_pushcfunction(L, l_##func); \
     lua_setglobal(L, #func)
@@ -219,4 +297,6 @@ void injectAPIFunctions(lua_State *L) {
     LUA_INJECT(getSender);
     LUA_INJECT(getConfig);
     LUA_INJECT(setConfig);
+    LUA_INJECT(messageType);
+    LUA_INJECT(downloadFile);
 }
