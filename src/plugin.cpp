@@ -40,12 +40,15 @@ static bool getfield(lua_State *L, const char *key, const char **value) {
     lua_getfield(L, -1, key);
     if (lua_isnil(L, -1)) {
         logger.debug("Missing key " + std::string(key));
+        lua_pop(L, 1);
         return false;
     }
     if (!lua_isstring(L, -1)) {
         logger.debug("Invalid type for key " + std::string(key) + " expected string");
+        lua_pop(L, 1);
         return false;
     }
+
     *value = lua_tostring(L, -1);
     lua_pop(L, 1);
     return true;
@@ -55,10 +58,12 @@ static bool getfield(lua_State *L, const char *key, bool *value) {
     lua_getfield(L, -1, key);
     if (lua_isnil(L, -1)) {
         logger.debug("Missing key " + std::string(key));
+        lua_pop(L, 1);
         return false;
     }
     if (!lua_isboolean(L, -1)) {
         logger.debug("Invalid type for key " + std::string(key) + " expected boolean");
+        lua_pop(L, 1);
         return false;
     }
     *value = lua_toboolean(L, -1);
@@ -78,6 +83,7 @@ static bool getfield_array(lua_State *L, const char *key, std::vector<std::strin
         lua_rawgeti(L, -1, i);
         if (!lua_isstring(L, -1)) {
             logger.debug("Invalid type in string array index=" + std::to_string(i));
+            lua_pop(L, 1);
             return false;
         }
         const char *v;
@@ -103,6 +109,7 @@ static bool getusages(lua_State *L, const std::vector<std::string> &commands,
         const char *usage;
         if(!getfield(L, command.c_str(), &usage)) {
             logger.error("Did not define usage for command: " + command);
+            lua_pop(L, 1);
             return false;
         }
         (*commandUsages)[command] = std::string(usage);
@@ -198,6 +205,12 @@ Plugin::Plugin(const std::string &name) : config(nullptr), luaState(luaL_newstat
         }
     }
 
+    { // load the alwaysTrigger field
+        if (!getfield(L, "alwaysTrigger", &this->alwaysTrigger)) {
+            alwaysTrigger = false;
+        }
+    }
+
     { // load the regular expressions
         std::vector<std::string> matchStrings;
         if (getfield_array(L, "matches", &matchStrings)) {
@@ -255,6 +268,15 @@ static void callRun(lua_State *L, const std::string &message, const std::string 
 void Plugin::run(const json &update) {
     PluginRunState currentRun;
     std::string message = getMessageText(update);
+
+    if (alwaysTrigger) {
+        currentRun.plugin = this;
+        currentRun.update = update;
+        currentRun.regex = false;
+        callRun(luaState.get(), message, "ANY", &currentRun);
+    }
+
+
     if (message == "") {
         return;
     }
@@ -262,8 +284,8 @@ void Plugin::run(const json &update) {
     // check if we called a command this plugin uses
     for (auto command : commands) {
         if (message.find("/" + command.first) == 0 &&
-            (message.length() == command.first.length() + 1 ||
-             message[command.first.length() + 1] == ' ')) {
+                (message.length() == command.first.length() + 1 ||
+                 message[command.first.length() + 1] == ' ')) {
 
             currentRun.plugin = this;
             currentRun.update = update;
@@ -284,6 +306,10 @@ void Plugin::run(const json &update) {
             }
         }
     }
+}
+
+std::string Plugin::getPath() const {
+    return pluginsDir + name + "/";
 }
 
 bool loadPlugins(std::vector<Plugin> *plugins) {

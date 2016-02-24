@@ -53,6 +53,7 @@ public:
      */
     void run(const json &update);
 
+    std::string getPath() const;
     std::string getDescription() { return description; }
     std::string getName() { return name; }
 
@@ -65,6 +66,7 @@ private:
     std::string description;
     std::string name;
     bool commandOnly;
+    bool alwaysTrigger;
 };
 
 // State information for a single call of run
