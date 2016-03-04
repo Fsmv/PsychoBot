@@ -52,8 +52,16 @@ target_link_libraries(${CMAKE_PROJECT_NAME} ${CURLPP_LIBRARIES})
 target_link_libraries(${CMAKE_PROJECT_NAME} ${MICROHTTPD_LIBRARIES})
 target_link_libraries(${CMAKE_PROJECT_NAME} ${SQLITE3_LIBRARY})
 
-#install(TARGETS ${CMAKE_PREJECT_NAME} LIBRARY DESTINATION lib ARCHIVE DESTINATION lib)
-#install(FILES ${CMAKE_SOURCE_DIR}/include/Gif.h DESTINATION include)
+######### Build Documentation
+find_package(Doxygen)
+if(DOXYGEN_FOUND)
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/doc/Doxyfile.in ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile @ONLY)
+    add_custom_target(doc
+        ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        COMMENT "Generating API documentation with Doxygen" VERBATIM
+    )
+endif(DOXYGEN_FOUND)
 
 ######### Build Tests
 #find_package(Check)
